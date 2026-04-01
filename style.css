@@ -1,0 +1,411 @@
+/* CV PORTFOLIO — OpenTemp V2 Compliant */
+:root {
+    /* Fallback defaults (overridden by active theme) */
+    --bg-main:          #F8F9FA;
+    --bg-card:          #FFFFFF;
+    --bg-highlight:     #1E293B;
+    --h1-color:         #111827;
+    --h2-color:         #1E293B;
+    --h3-color:         #374151;
+    --text-body:        #4B5563;
+    --text-muted:       #9CA3AF;
+    --text-on-dark:     #FFFFFF;
+    --accent-vivid:     #6366F1;
+    --accent-soft:      #A5B4FC;
+    --accent-dark:      #4338CA;
+    --badge-bg:         #EEF2FF;
+    --badge-text:       #6366F1;
+    --btn-primary-bg:   #6366F1;
+    --btn-primary-text: #FFFFFF;
+    --btn-ghost-border: #6366F1;
+    --btn-ghost-text:   #6366F1;
+    --border-line:      rgba(0,0,0,0.08);
+    --border-card:      rgba(0,0,0,0.06);
+    --divider-color:    #6366F1;
+    --number-color:     #6366F1;
+    --footer-bg:        #1E293B;
+    --footer-text:      rgba(255,255,255,0.6);
+    --footer-accent:    #6366F1;
+}
+
+/* ─── RESET ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+a { text-decoration: none; color: inherit; }
+
+/* ─── WRAPPER ─── */
+.cv-wrapper {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ─── HERO ─── */
+.cv-hero {
+    padding: 80px 0 64px;
+    border-bottom: 1px solid var(--border-line);
+}
+
+.cv-hero-inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 40px;
+}
+
+.cv-hero-text {
+    flex: 1;
+}
+
+.cv-available-badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--badge-text);
+    background: var(--badge-bg);
+    border: 1px solid var(--accent-soft);
+    padding: 4px 12px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+}
+
+.cv-available-badge::before {
+    content: '●';
+    margin-right: 6px;
+    font-size: 0.55rem;
+    vertical-align: middle;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+#cv-name {
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    font-weight: 900;
+    color: var(--h1-color);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin-bottom: 10px;
+}
+
+.cv-role {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--accent-vivid);
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.cv-bio {
+    font-size: 1rem;
+    color: var(--text-body);
+    max-width: 520px;
+    line-height: 1.7;
+    margin-bottom: 28px;
+}
+
+.cv-contact-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cv-contact-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-body);
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    padding: 7px 14px;
+    border-radius: 8px;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.cv-contact-pill:hover {
+    border-color: var(--accent-vivid);
+    color: var(--accent-vivid);
+}
+
+.cv-contact-icon {
+    display: flex;
+    align-items: center;
+    color: var(--accent-vivid);
+}
+
+/* Hero Avatar */
+.cv-hero-avatar {
+    flex-shrink: 0;
+}
+
+.cv-avatar-ring {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 2px solid var(--accent-vivid);
+    padding: 4px;
+    opacity: 0.8;
+}
+
+.cv-avatar-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ─── SECTIONS ─── */
+.cv-section {
+    padding: 60px 0;
+    border-bottom: 1px solid var(--border-line);
+}
+
+.cv-section-alt {
+    background: transparent;
+}
+
+.cv-section-inner {
+    width: 100%;
+}
+
+.cv-section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 36px;
+}
+
+.cv-section-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent-vivid);
+    opacity: 0.6;
+    letter-spacing: 0.05em;
+}
+
+.cv-section-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--h2-color);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.cv-section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-line);
+}
+
+/* ─── SKILLS ─── */
+.cv-skills-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cv-skill-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent-vivid);
+    background: var(--badge-bg);
+    border: 1px solid var(--accent-soft);
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: default;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.cv-skill-tag:hover {
+    background: var(--accent-vivid);
+    color: var(--text-on-dark);
+    transform: translateY(-1px);
+}
+
+/* ─── PROJECTS ─── */
+.cv-projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.cv-project-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.cv-project-card:hover {
+    border-color: var(--accent-vivid);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+.cv-project-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cv-project-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--h3-color);
+    line-height: 1.3;
+}
+
+.cv-project-tech {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent-vivid);
+    opacity: 0.8;
+    font-weight: 500;
+}
+
+.cv-project-desc {
+    font-size: 0.875rem;
+    color: var(--text-body);
+    line-height: 1.6;
+    flex: 1;
+}
+
+.cv-project-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent-vivid);
+    margin-top: auto;
+    transition: gap 0.2s;
+}
+
+.cv-project-link:hover {
+    gap: 8px;
+}
+
+/* ─── EDUCATION ─── */
+.cv-edu-block {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-left: 3px solid var(--accent-vivid);
+    border-radius: 0 12px 12px 0;
+    padding: 28px 28px 28px 24px;
+}
+
+.cv-edu-icon {
+    color: var(--accent-vivid);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.cv-edu-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cv-edu-school {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--h3-color);
+}
+
+.cv-edu-detail {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.cv-edu-staj {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--badge-text);
+    background: var(--badge-bg);
+    border: 1px solid var(--accent-soft);
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+/* ─── FOOTER ─── */
+.cv-footer {
+    background: var(--footer-bg);
+    margin: 0 -24px;
+    padding: 32px 24px;
+}
+
+.cv-footer-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cv-footer #cv-footer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--footer-text);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.cv-footer-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--footer-accent);
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 600px) {
+    .cv-hero-inner {
+        flex-direction: column-reverse;
+        gap: 24px;
+    }
+
+    .cv-avatar-ring {
+        width: 80px;
+        height: 80px;
+    }
+
+    .cv-projects-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cv-contact-row {
+        flex-direction: column;
+    }
+}

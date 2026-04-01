@@ -1,0 +1,218 @@
+{
+  "templateName": "CV Portfolio",
+  "description": "A personal developer CV/portfolio page. Sections: Hero, Skills, Projects, Education, Contact. All fields are dashboard-editable with full theme support.",
+  "fields": [
+    {
+      "id": "cv-name",
+      "type": "text",
+      "label": "Full Name",
+      "default": "Muharrem Emin Yurt",
+      "targetSelector": "#cv-name"
+    },
+    {
+      "id": "cv-role",
+      "type": "text",
+      "label": "Role / Title",
+      "default": "Full-Stack Developer & C++ Enthusiast",
+      "targetSelector": "#cv-role"
+    },
+    {
+      "id": "cv-bio",
+      "type": "textarea",
+      "label": "Bio / Tagline",
+      "default": "Lise öğrencisi, sistem programlama ve web geliştirme tutkunu. Düşünceleri koda döküyorum.",
+      "targetSelector": "#cv-bio"
+    },
+    {
+      "id": "cv-github",
+      "type": "text",
+      "label": "GitHub Username",
+      "default": "github.com/Kzuyaa",
+      "targetSelector": "#cv-github-link"
+    },
+    {
+      "id": "cv-email",
+      "type": "text",
+      "label": "Email",
+      "default": "annasuinarcisoo@gmail.com",
+      "targetSelector": "#cv-email-link"
+    },
+    {
+      "id": "cv-skill-1",
+      "type": "text",
+      "label": "Skill 1",
+      "default": "C++17",
+      "targetSelector": "#cv-skill-1"
+    },
+    {
+      "id": "cv-skill-2",
+      "type": "text",
+      "label": "Skill 2",
+      "default": "JavaScript",
+      "targetSelector": "#cv-skill-2"
+    },
+    {
+      "id": "cv-skill-3",
+      "type": "text",
+      "label": "Skill 3",
+      "default": "HTML & CSS",
+      "targetSelector": "#cv-skill-3"
+    },
+    {
+      "id": "cv-skill-4",
+      "type": "text",
+      "label": "Skill 4",
+      "default": "Git",
+      "targetSelector": "#cv-skill-4"
+    },
+    {
+      "id": "cv-skill-6",
+      "type": "text",
+      "label": "Skill 6",
+      "default": "Linux / Bash",
+      "targetSelector": "#cv-skill-6"
+    },
+    {
+      "id": "cv-skill-7",
+      "type": "text",
+      "label": "Skill 7",
+      "default": "VS Code",
+      "targetSelector": "#cv-skill-7"
+    },
+    {
+      "id": "cv-skill-8",
+      "type": "text",
+      "label": "Skill 8",
+      "default": "Node.js",
+      "targetSelector": "#cv-skill-8"
+    },
+    {
+      "id": "cv-proj-1-title",
+      "type": "text",
+      "label": "Project 1 — Title",
+      "default": "OpenTemp",
+      "targetSelector": "#cv-proj-1-title"
+    },
+    {
+      "id": "cv-proj-1-tech",
+      "type": "text",
+      "label": "Project 1 — Tech Stack",
+      "default": "C++17 · JavaScript · HTML/CSS",
+      "targetSelector": "#cv-proj-1-tech"
+    },
+    {
+      "id": "cv-proj-1-desc",
+      "type": "textarea",
+      "label": "Project 1 — Description",
+      "default": "Çift dilli (C++/JS) HTML template yönetim sistemi. Dashboard ile canlı önizleme, inline editing, theme switching ve ZIP export.",
+      "targetSelector": "#cv-proj-1-desc"
+    },
+    {
+      "id": "cv-proj-1-link",
+      "type": "text",
+      "label": "Project 1 — Link",
+      "default": "https://github.com/Kzuyaa/OpenTemp-clean_baseline",
+      "targetSelector": "#cv-proj-1-link"
+    },
+    {
+      "id": "cv-proj-2-title",
+      "type": "text",
+      "label": "Project 2 — Title",
+      "default": "AniDeep",
+      "targetSelector": "#cv-proj-2-title"
+    },
+    {
+      "id": "cv-proj-2-tech",
+      "type": "text",
+      "label": "Project 2 — Tech Stack",
+      "default": "JavaScript · Jikan API",
+      "targetSelector": "#cv-proj-2-tech"
+    },
+    {
+      "id": "cv-proj-2-desc",
+      "type": "textarea",
+      "label": "Project 2 — Description",
+      "default": "Türkiye'nin en kapsamlı anime ve manga takip platformu. Kullanıcılar anime serilerini takip edebilir, manga keşfedebilir ve sezon takvimlerine ulaşabilir.",
+      "targetSelector": "#cv-proj-2-desc"
+    },
+    {
+      "id": "cv-proj-2-link",
+      "type": "text",
+      "label": "Project 2 — Link",
+      "default": "https://anideep.com",
+      "targetSelector": "#cv-proj-2-link"
+    },
+    {
+      "id": "cv-proj-3-title",
+      "type": "text",
+      "label": "Project 3 — Title",
+      "default": "IndieDeep",
+      "targetSelector": "#cv-proj-3-title"
+    },
+    {
+      "id": "cv-proj-3-tech",
+      "type": "text",
+      "label": "Project 3 — Tech Stack",
+      "default": "Svelte · JavaScript",
+      "targetSelector": "#cv-proj-3-tech"
+    },
+    {
+      "id": "cv-proj-3-desc",
+      "type": "textarea",
+      "label": "Project 3 — Description",
+      "default": "Svelte ile geliştirilmiş veri yönetimi ve istek listesi odaklı web uygulaması.",
+      "targetSelector": "#cv-proj-3-desc"
+    },
+    {
+      "id": "cv-proj-3-link",
+      "type": "text",
+      "label": "Project 3 — Link",
+      "default": "https://github.com/Kzuyaa/IndieDeep",
+      "targetSelector": "#cv-proj-3-link"
+    },
+    {
+      "id": "cv-edu-school",
+      "type": "text",
+      "label": "Education — School Name",
+      "default": "Yenimahalle Şehit Mehmet Şengül Mesleki ve Teknik Anadolu Lisesi",
+      "targetSelector": "#cv-edu-school"
+    },
+    {
+      "id": "cv-edu-detail",
+      "type": "text",
+      "label": "Education — Year & Department",
+      "default": "2022 – 2026 · Fen Bilimleri",
+      "targetSelector": "#cv-edu-detail"
+    },
+    {
+      "id": "cv-edu-staj",
+      "type": "text",
+      "label": "Education — Internship Note",
+      "default": "Staj: Yazılım Geliştirme · 2026",
+      "targetSelector": "#cv-edu-staj"
+    },
+    {
+      "id": "cv-footer",
+      "type": "text",
+      "label": "Footer Name",
+      "default": "Muharrem Emin Yurt // 2026",
+      "targetSelector": "#cv-footer"
+    }
+  ],
+  "defaultTheme": "css/themes/theme-clean-saas.css",
+  "supportedThemes": [
+    "css/themes/theme-clean-saas.css",
+    "css/themes/theme-obsidian.css",
+    "css/themes/theme-stark.css",
+    "css/themes/theme-nature.css",
+    "css/themes/theme-cosmic.css",
+    "css/themes/theme-gothic.css",
+    "css/themes/theme-cyberpunk.css",
+    "css/themes/theme-matrix.css",
+    "css/themes/theme-vintage.css",
+    "css/themes/theme-pixel.css",
+    "css/themes/theme-coquette.css",
+    "css/themes/theme-steampunk.css",
+    "css/themes/theme-comic.css"
+  ]
+}
