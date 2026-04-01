@@ -1,0 +1,1298 @@
+/* THEME: Matrix — Terminal green on black (digital rain aesthetic) */
+:root {
+    /* === BACKGROUNDS === */
+    --bg-main:              #001100;
+    --bg-card:              #002200;
+    --bg-highlight:         #003300;
+
+    /* === TEXT === */
+    --h1-color:             #00ff00;
+    --h2-color:             #00cc00;
+    --h3-color:             #009900;
+    --text-body:            #00bb00;
+    --text-muted:           #006600;
+    --text-on-dark:         #00ff00;
+
+    /* === ACCENT === */
+    --accent-vivid:         #00ff00;
+    --accent-soft:          #00cc00;
+    --accent-dark:          #005500;
+
+    /* === BUTTONS === */
+    --btn-primary-bg:       #00ff00;
+    --btn-primary-text:     #000000;
+    --btn-primary-hover:    #00cc00;
+    --btn-ghost-border:     #00ff00;
+    --btn-ghost-text:       #00ff00;
+    --btn-ghost-hover:      rgba(0, 255, 0, 0.1);
+
+    /* === BADGES & ICONS === */
+    --badge-bg:             rgba(0, 255, 0, 0.08);
+    --badge-text:           #00ff00;
+    --icon-color:           #00ff00;
+    --icon-text:            #000000;
+
+    /* === BORDERS === */
+    --border-line:          rgba(0, 255, 0, 0.2);
+    --border-card:          rgba(0, 255, 0, 0.1);
+    --divider-color:        #00ff00;
+
+    /* === STATS === */
+    --number-color:         #00ff00;
+    --number-label:         #005500;
+
+    /* === FOOTER === */
+    --footer-bg:            #000000;
+    --footer-text:          rgba(0, 255, 0, 0.4);
+    --footer-accent:        #00ff00;
+
+    /* === LEGACY === */
+    --h1-red:               #00ff00;
+    --h1-black:             #001100;
+    --h1-yellow:            #00ff00;
+    --h2-cyan:              #00ff00;
+    --h2-magenta:           #005500;
+    --love-neon:            #00ff00;
+    --bg-dark:              #000000;
+}
+
+        /* METİN SEÇİMİ (GLITCH EFEKTİ) */
+        ::selection {
+            background: var(--h2-magenta);
+            color: #fff;
+            text-shadow: 2px 2px 0 var(--h2-cyan), -2px -2px 0 var(--h1-yellow);
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            font-family: 'Space Mono', monospace;
+            overflow-x: hidden;
+        }
+
+        /* --- ŞABLON AYARLARI PANELİ --- */
+        #settings-panel {
+            position: fixed;
+            top: 0;
+            right: -330px;
+            width: 310px;
+            height: 100vh;
+            background: rgba(12, 12, 12, 0.97);
+            border-left: 4px solid var(--h1-yellow);
+            box-shadow: -8px 0 30px rgba(0,0,0,0.8);
+            z-index: 1000;
+            padding: 15px 14px 30px;
+            color: #fff;
+            font-family: 'Space Mono', monospace;
+            transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-radius: 0;
+            box-sizing: border-box;
+        }
+
+        #settings-panel.open {
+            right: 0;
+        }
+
+        .settings-toggle {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            width: 46px;
+            height: 46px;
+            background: var(--h2-cyan);
+            border: 3px solid #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            cursor: pointer;
+            z-index: 1002;
+            box-shadow: 4px 4px 0 #000;
+            transition: transform 0.2s;
+        }
+
+        .settings-toggle:hover {
+            transform: scale(1.1) rotate(45deg);
+            background: var(--h1-yellow);
+        }
+
+        .settings-title {
+            font-family: 'Bangers', cursive;
+            font-size: 2rem;
+            color: var(--love-neon);
+            text-align: center;
+            text-shadow: 2px 2px 0 #000;
+            margin-top: 0;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            color: var(--h2-cyan);
+            font-weight: bold;
+        }
+
+        .setting-group input[type="text"],
+        .setting-group input[type="date"] {
+            width: 100%;
+            padding: 8px;
+            background: #000;
+            border: 2px solid var(--h2-magenta);
+            color: #fff;
+            box-sizing: border-box;
+            font-family: inherit;
+            margin-bottom: 5px;
+        }
+
+        /* AUDIO MIXER SLIDERS & UPLOAD */
+        .vol-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #333;
+            outline: none;
+            border: 1px solid var(--pixel-portal);
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--h1-yellow);
+            cursor: pointer;
+            border: 2px solid #000;
+        }
+
+        .vol-label {
+            font-size: 0.8rem;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+
+        .audio-upload-btn {
+            display: inline-block;
+            padding: 4px 8px;
+            background: var(--h2-magenta);
+            color: #fff;
+            font-size: 0.7rem;
+            cursor: pointer;
+            border: 1px solid #000;
+            transition: background 0.2s;
+        }
+
+        .audio-upload-btn:hover {
+            background: var(--h1-red);
+        }
+
+        #input-music-file,
+        #input-ambient-file {
+            display: none;
+        }
+
+        .file-upload-lbl {
+            display: block;
+            padding: 10px;
+            background: var(--h1-red);
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid #000;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            transition: background 0.2s;
+        }
+
+        .file-upload-lbl:hover {
+            background: var(--h1-yellow);
+            color: #000;
+        }
+
+        .setting-group input[type="file"] {
+            display: none;
+        }
+
+        /* Arka Plan Çoklu Evren Halftone (Çizgi Roman Noktaları) Efekti */
+        .halftone-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, #1a1a3a 20%, transparent 21%), radial-gradient(circle, transparent 20%, #1a1a3a 21%);
+            background-size: 10px 10px;
+            background-position: 0 0, 5px 5px;
+            background-color: var(--bg-dark);
+            z-index: -2;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        /* Glitch ve Scanlines */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 100;
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+        }
+
+        /* Ekran Geçişleri */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            display: none;
+            opacity: 0;
+        }
+
+        .screen.active {
+            display: block;
+            opacity: 1;
+            position: relative;
+        }
+
+        /* SCROLL SNAP (ÇİZGİ ROMAN SAYFASI ÇEVİRME) - Başlangıçta inaktif */
+        #main-scroll-container {
+            width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .snap-active {
+            overflow-y: auto !important;
+            scroll-behavior: smooth;
+        }
+
+        /* Mobile cihazlarda daha tutarlı çalışması için. Mandatory yerine proximity yapıldı ki kitlenme çok sert olmasın */
+        @media (min-width: 900px) {
+            .snap-active {
+                scroll-snap-type: y proximity;
+            }
+        }
+
+        /* --- BAŞLANGIÇ EKRANI: ANOMALİ PORTALI --- */
+        #initial-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--h1-black);
+            z-index: 200;
+            height: 100vh;
+            position: fixed;
+        }
+
+        .portal-container {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .portal-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 6px dashed #fff;
+            mix-blend-mode: screen;
+            filter: blur(1px);
+        }
+
+        .ring-1 {
+            width: 100%;
+            height: 100%;
+            border-color: var(--h2-cyan);
+            box-shadow: 0 0 40px var(--h2-cyan);
+            border-style: solid;
+        }
+
+        .ring-2 {
+            width: 80%;
+            height: 80%;
+            border-color: var(--pixel-portal);
+            box-shadow: 0 0 50px var(--pixel-portal);
+            border-width: 10px;
+            border-style: double;
+        }
+
+        .ring-3 {
+            width: 60%;
+            height: 60%;
+            border-color: var(--h1-yellow);
+            box-shadow: 0 0 60px var(--h1-yellow);
+            border-style: dotted;
+        }
+
+        .pixel-grid-particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: var(--pixel-portal);
+            pointer-events: none;
+            z-index: 15;
+            mix-blend-mode: screen;
+            filter: drop-shadow(0 0 4px #ff00ff);
+            border-radius: 0;
+        }
+
+        /* --- ANA EKRAN BÖLÜMLERİ --- */
+        .hero-section,
+        .text-section {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            scroll-snap-align: start;
+            padding: 20px 0;
+            box-sizing: border-box;
+        }
+
+        .love-web-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            background: radial-gradient(circle at center, rgba(192, 47, 245, 0.1) 0%, transparent 60%);
+        }
+
+        /* PANELERİN CİNAMATİK (PARALLAX) ETKİLEŞİMİ */
+        .photos-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 80px;
+            width: 100%;
+            max-width: 1200px;
+            perspective: 1500px;
+            z-index: 10;
+            margin-bottom: 50px;
+        }
+
+        .comic-frame {
+            will-change: transform, box-shadow;
+            backface-visibility: hidden;
+
+            width: 280px;
+            height: 400px;
+            position: relative;
+            background: #fff;
+            padding: 12px;
+            padding-bottom: 50px;
+            border: 6px solid #000;
+            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+            /* Parallax için hızlı transition */
+            cursor: move;
+            transform-style: preserve-3d;
+        }
+
+        .comic-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border: 3px solid #000;
+            pointer-events: none;
+        }
+
+        .comic-frame::after {
+            content: 'Drag & Drop';
+            position: absolute;
+            top: 40%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: transparent;
+            font-family: 'Bangers', cursive;
+            font-size: 2rem;
+            transition: color 0.3s;
+            pointer-events: none;
+            text-shadow: none;
+            z-index: 5;
+        }
+
+        .comic-frame:hover::after {
+            color: #fff;
+            text-shadow: 2px 2px 0 #000, 0 0 10px var(--love-neon);
+        }
+
+        .comic-caption {
+            position: absolute;
+            bottom: 8px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-family: 'Bangers', cursive;
+            font-size: 2.2rem;
+            letter-spacing: 2px;
+        }
+
+        /* Hero1 Frame */
+        .hero1-frame {
+            background-color: var(--h1-red);
+            box-shadow: 15px 15px 0 var(--h2-cyan), 22px 22px 0 var(--h1-black);
+        }
+
+        .hero1-frame .comic-caption {
+            color: var(--h1-yellow);
+            text-shadow: 3px 3px 0 #000;
+        }
+
+        .hero1-frame img {
+            filter: contrast(130%) sepia(20%) hue-rotate(-20deg);
+            image-rendering: pixelated;
+        }
+
+        /* Hero2 Frame */
+        .hero2-frame {
+            background-color: var(--h2-white);
+            border-color: #000;
+            box-shadow: -15px 15px 0 var(--h1-yellow), -22px 22px 0 var(--h1-black);
+        }
+
+        .hero2-frame .comic-caption {
+            color: var(--h2-magenta);
+            text-shadow: 3px 3px 0 var(--h2-cyan);
+        }
+
+        .hero2-frame img {
+            filter: contrast(110%) saturate(140%) hue-rotate(180deg) hue-rotate(-180deg);
+            image-rendering: pixelated;
+        }
+
+        /* Ortadaki Örümcek-Aşk Çekirdeği */
+        .center-anomaly {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            cursor: pointer;
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .comic-heart {
+            will-change: transform, filter, box-shadow;
+
+            width: 60px;
+            height: 60px;
+            background: var(--love-neon);
+            border: 4px solid #000;
+            transform: rotate(-45deg);
+            box-shadow: 8px 8px 0 #000, 0 0 50px var(--love-neon);
+            animation: coreBeat 0.6s infinite alternate;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .comic-heart::before,
+        .comic-heart::after {
+            content: '';
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: var(--love-neon);
+            border: 4px solid #000;
+        }
+
+        .comic-heart::before {
+            top: -34px;
+            left: -4px;
+            border-bottom: none;
+            border-right: none;
+            border-radius: 50% 50% 0 0;
+        }
+
+        .comic-heart::after {
+            top: -4px;
+            left: 34px;
+            border-left: none;
+            border-bottom: none;
+            border-radius: 0 50% 50% 0;
+        }
+
+        .anomaly-web {
+            will-change: transform, opacity;
+
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border: 4px dashed var(--pixel-portal);
+            border-radius: 50%;
+            animation: spinWeb 5s linear infinite;
+            opacity: 0.8;
+            box-shadow: 0 0 20px var(--pixel-portal);
+        }
+
+        @keyframes coreBeat {
+            0% {
+                transform: rotate(-45deg) scale(1) translateZ(0);
+            }
+
+            100% {
+                transform: rotate(-45deg) scale(1.3) translateZ(0);
+                filter: brightness(1.3);
+            }
+        }
+
+        @keyframes spinWeb {
+            100% {
+                transform: rotate(360deg) scale(1.2) translateZ(0);
+                opacity: 0.2;
+                border-color: var(--love-neon);
+            }
+        }
+
+        .center-anomaly:hover .comic-heart {
+            will-change: transform, filter, box-shadow;
+
+            transform: rotate(-45deg) scale(1.8);
+            box-shadow: 12px 12px 0 #000, 0 0 40px #fff, 0 0 80px var(--love-neon);
+            animation: none;
+            background: #fff;
+        }
+
+        .center-anomaly:hover .comic-heart::before,
+        .center-anomaly:hover .comic-heart::after {
+            background: #fff;
+        }
+
+        .center-anomaly:active .comic-heart {
+            will-change: transform, filter, box-shadow;
+
+            transform: rotate(-45deg) scale(2.5);
+            box-shadow: 15px 15px 0 #000, 0 0 100px #fff;
+        }
+
+        /* Aşk Sayacı (LOVE COUNTER) */
+        .love-counter {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.2rem;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000, 4px 4px 0 var(--pixel-portal);
+            margin-top: -20px;
+            text-align: center;
+            z-index: 10;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px dashed var(--h2-cyan);
+            cursor: pointer;
+        }
+
+        /* Çizgi Roman Ayırıcıları */
+        .comic-divider {
+            width: 100%;
+            height: 120px;
+            background: var(--h1-black);
+            border-top: 6px solid #fff;
+            border-bottom: 6px solid #fff;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: skewY(-3deg);
+            margin: 30px 0;
+            z-index: 10;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9);
+        }
+
+        .divider-text {
+            font-family: 'Bangers', cursive;
+            font-size: 5rem;
+            color: var(--love-neon);
+            text-shadow: 5px 5px 0 var(--h1-yellow), 10px 10px 0 #000;
+            letter-spacing: 5px;
+            transform: rotate(-4deg);
+            animation: popText 0.3s infinite alternate;
+        }
+
+        @keyframes popText {
+            0% {
+                transform: rotate(-4deg) scale(1);
+            }
+
+            100% {
+                transform: rotate(-2deg) scale(1.1);
+                text-shadow: 5px 5px 0 var(--pixel-portal), 10px 10px 0 #000;
+            }
+        }
+
+        .divider-web-bg {
+            position: absolute;
+            width: 120%;
+            height: 200%;
+            opacity: 0.3;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, var(--love-neon) 10px, var(--love-neon) 12px);
+            animation: slideWeb 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes slideWeb {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-50px);
+            }
+        }
+
+        /* MINECRAFT BLOCK DIVIDER (EXP BAR) */
+        .pixel-divider {
+            width: 100%;
+            height: 30px;
+            background: #000;
+            border-top: 4px solid #5a5a5a;
+            border-bottom: 4px solid #5a5a5a;
+            position: relative;
+            margin: 30px 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            z-index: 10;
+        }
+
+        .pixel-exp-bar {
+            height: 100%;
+            background: #0db313;
+            border-top: 4px solid #4cf253;
+            border-bottom: 4px solid #06660a;
+            width: 70%;
+            animation: expGrow 3s ease-out infinite alternate;
+        }
+
+        @keyframes expGrow {
+            0% {
+                width: 50%;
+            }
+
+            100% {
+                width: 100%;
+            }
+        }
+
+        /* LOVEBOMBING METİN KUTULARI */
+        .comic-box {
+            width: 100%;
+            max-width: 850px;
+            padding: 50px;
+            position: relative;
+            background: #fff;
+            border: 8px solid #000;
+            box-shadow: 18px 18px 0 var(--love-neon), 24px 24px 0 #000;
+            z-index: 10;
+            transform: rotate(1deg);
+            border-radius: 20px;
+            margin: 0 auto;
+        }
+
+        .comic-box::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            left: 50px;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-bottom: 30px solid #000;
+        }
+
+        .comic-box::after {
+            content: '';
+            position: absolute;
+            top: -16px;
+            left: 54px;
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-bottom: 20px solid #fff;
+        }
+
+        .comic-box.hero2-style {
+            background: var(--h1-black);
+            color: #fff;
+            border-color: var(--love-neon);
+            box-shadow: -18px 18px 0 var(--pixel-portal), -24px 24px 0 #000;
+            transform: rotate(-1.5deg);
+            border-radius: 20px;
+        }
+
+        .comic-box.hero2-style::before {
+            border-bottom-color: #000;
+            right: 50px;
+            left: auto;
+        }
+
+        .comic-box.hero2-style::after {
+            border-bottom-color: var(--h1-black);
+            right: 54px;
+            left: auto;
+        }
+
+        .comic-title {
+            font-family: 'Bangers', cursive;
+            font-size: 3.5rem;
+            color: var(--h1-black);
+            text-transform: uppercase;
+            margin-top: 0;
+            margin-bottom: 25px;
+            text-shadow: 4px 4px 0 var(--h2-cyan), -4px -4px 0 var(--pixel-portal);
+            outline: none;
+            display: inline-block;
+            position: relative;
+        }
+
+        .comic-box.hero2-style .comic-title {
+            color: #fff;
+            text-shadow: 4px 4px 0 var(--love-neon), -4px -4px 0 var(--h2-cyan);
+        }
+
+        .comic-paragraphs p {
+            font-size: 1.4rem;
+            color: #111;
+            font-weight: 800;
+            line-height: 1.9;
+            margin: 0 0 20px 0;
+            outline: none;
+            text-align: justify;
+            text-shadow: 1px 1px 0 #fff;
+        }
+
+        .comic-box.hero2-style .comic-paragraphs p {
+            color: #f0f0f0;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .highlight-text {
+            background: var(--h1-yellow);
+            color: #000;
+            padding: 2px 8px;
+            font-family: 'Bangers', cursive;
+            font-size: 1.8rem;
+            letter-spacing: 1px;
+            border: 3px solid #000;
+            display: inline-block;
+            transform: rotate(-3deg);
+            box-shadow: 4px 4px 0 var(--love-neon);
+            transition: all 0.2s;
+        }
+
+        .comic-box.hero2-style .highlight-text {
+            background: var(--pixel-portal);
+            color: #fff;
+            border-color: var(--h2-cyan);
+            box-shadow: 4px 4px 0 #000;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .comic-outro {
+            font-family: 'Bangers', cursive;
+            font-size: 4rem;
+            color: var(--love-neon);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            text-shadow: 5px 5px 0 var(--pixel-portal), 10px 10px 0 #000;
+            margin-top: 40px;
+            outline: none;
+            display: block;
+            width: 100%;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .comic-outro:hover {
+            transform: scale(1.1);
+        }
+
+        /* VISUAL NOVEL CHOICES */
+        .choice-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .choice-btn {
+            background: var(--bg-dark);
+            color: #fff;
+            border: 4px solid var(--h2-cyan);
+            padding: 10px 20px;
+            font-family: 'Space Mono', monospace;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 6px 6px 0 #000;
+            transition: transform 0.1s, box-shadow 0.1s;
+            position: relative;
+        }
+
+        .choice-btn:hover {
+            background: var(--h1-red);
+            border-color: var(--h1-yellow);
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 #000;
+        }
+
+        .choice-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0 0 0 #000;
+        }
+
+        /* NASIL BAŞLADI (ORIGIN SECTION) */
+        .origin-section {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 50px auto;
+            position: relative;
+            scroll-snap-align: center;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        .origin-photo-frame {
+            width: 300px;
+            height: 350px;
+            background: #fff;
+            padding: 15px 15px 50px 15px;
+            border: 5px solid #000;
+            box-shadow: 15px 15px 0 var(--h1-red), 20px 20px 0 #000;
+            transform: rotate(-8deg);
+            z-index: 15;
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+            transition: transform 0.3s;
+        }
+
+        .origin-photo-frame:hover {
+            transform: rotate(-2deg) scale(1.05);
+        }
+
+        .origin-photo-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border: 3px solid #000;
+            filter: contrast(120%);
+            image-rendering: pixelated;
+        }
+
+        .origin-photo-frame::after {
+            content: '+ Drag Photo';
+            position: absolute;
+            top: 40%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: transparent;
+            font-family: 'Bangers', cursive;
+            font-size: 1.5rem;
+            transition: color 0.3s;
+            pointer-events: none;
+            text-shadow: none;
+        }
+
+        .origin-photo-frame:hover::after {
+            color: #fff;
+            text-shadow: 2px 2px 0 #000, 0 0 10px var(--h1-red);
+        }
+
+        .origin-text-box {
+            background: rgba(17, 17, 17, 0.95);
+            border: 5px solid var(--pixel-portal);
+            padding: 30px;
+            box-shadow: -15px 15px 0 var(--h2-cyan), -20px 20px 0 #000;
+            transform: rotate(5deg) translateY(20px);
+            z-index: 20;
+            max-width: 500px;
+            position: relative;
+            margin-left: -50px;
+        }
+
+        .origin-title {
+            color: var(--love-neon);
+            text-shadow: 3px 3px 0 #000;
+            margin-bottom: 10px;
+        }
+
+        .origin-text-box p {
+            font-size: 1.2rem;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000;
+            line-height: 1.6;
+        }
+
+        /* GALLERY / FILM STRIP */
+        .film-strip-wrapper {
+            width: 100%;
+            max-width: 1000px;
+            padding: 20px;
+            overflow-x: auto;
+            display: flex;
+            gap: 20px;
+            padding-bottom: 30px;
+            margin: 0 auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--h1-yellow) var(--bg-dark);
+        }
+
+        .film-frame {
+            min-width: 250px;
+            height: 350px;
+            background: #222;
+            border: 8px solid #000;
+            position: relative;
+            scroll-snap-align: center;
+            border-radius: 8px;
+            box-shadow: 10px 10px 0 var(--h1-red), 15px 15px 0 #000;
+            overflow: hidden;
+            cursor: crosshair;
+            transition: transform 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .film-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+            filter: grayscale(50%) contrast(120%);
+            image-rendering: pixelated;
+        }
+
+        .film-frame:nth-child(even) {
+            border-color: var(--pixel-portal);
+            box-shadow: 10px 10px 0 var(--h2-cyan), 15px 15px 0 #000;
+        }
+
+        .film-frame:hover img {
+            opacity: 1;
+            filter: grayscale(0%) contrast(100%);
+        }
+
+        .film-frame::after {
+            content: '+ Drag Photo';
+            position: absolute;
+            color: transparent;
+            font-family: 'Bangers', cursive;
+            font-size: 1.8rem;
+            transition: color 0.3s;
+            text-shadow: none;
+            pointer-events: none;
+            text-align: center;
+            padding: 0 10px;
+        }
+
+        .film-frame:hover::after {
+            color: #fff;
+            text-shadow: 2px 2px 0 #000, 0 0 10px var(--h1-yellow);
+        }
+
+        .film-strip-title {
+            font-family: 'Bangers', cursive;
+            font-size: 3rem;
+            color: #fff;
+            text-shadow: 3px 3px 0 var(--pixel-portal), 6px 6px 0 #000;
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+            outline: none;
+            margin-top: 50px;
+        }
+
+        /* Easter Egg & Particles */
+        .easter-egg-monster {
+            position: fixed;
+            bottom: -50px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: #000;
+            border: 4px solid #0f0;
+            background-color: #0d8a0d;
+            z-index: 50;
+            cursor: pointer;
+            transition: bottom 0.3s;
+            background-image: linear-gradient(to right, transparent 20%, #000 20%, #000 30%, transparent 30%, transparent 70%, #000 70%, #000 80%, transparent 80%), linear-gradient(to bottom, transparent 40%, #000 40%, #000 70%, transparent 70%);
+            background-size: 60px 60px;
+        }
+
+        .easter-egg-monster:hover {
+            bottom: 0;
+        }
+
+        /* Particle sınıfları js'de olusuyor */
+        .comic-heart {
+            will-change: transform, filter, box-shadow;
+
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: var(--love-neon);
+            transform: rotate(-45deg);
+            border: 2px solid #000;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .comic-heart::before,
+        .comic-heart::after {
+            content: '';
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: inherit;
+            border: 2px solid #000;
+        }
+
+        .comic-heart::before {
+            top: -14px;
+            left: -2px;
+            border-bottom: none;
+            border-right: none;
+            border-radius: 50% 50% 0 0;
+        }
+
+        .comic-heart::after {
+            top: -2px;
+            left: 14px;
+            border-left: none;
+            border-bottom: none;
+            border-radius: 0 50% 50% 0;
+        }
+
+        .pixel-heart {
+            position: absolute;
+            font-family: 'Press Start 2P', cursive;
+            color: var(--love-neon);
+            text-shadow: 2px 2px 0 var(--pixel-heart-border), -2px -2px 0 var(--pixel-heart-border), 2px -2px 0 var(--pixel-heart-border), -2px 2px 0 var(--pixel-heart-border), 4px 4px 0 #000;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .star-particle {
+            position: absolute;
+            display: inline-block;
+            color: var(--h1-yellow);
+            font-family: 'Bangers', cursive;
+            font-size: 3rem;
+            text-shadow: 3px 3px 0 #000;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        /* SPIDER-PUNK (HOBART BROWN) ELECTRIC / GUITAR EFFECT */
+        .punk-lightning {
+            position: fixed;
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0;
+            background: repeating-linear-gradient(45deg, var(--h2-magenta), var(--h2-magenta) 5px, var(--h2-cyan) 5px, var(--h2-cyan) 10px);
+            border: 4px solid #fff;
+            box-shadow: 6px 6px 0 #000, -6px -6px 0 var(--h1-yellow);
+            mix-blend-mode: hard-light;
+            filter: drop-shadow(0 0 15px var(--h1-yellow));
+        }
+
+        /* Punk Hover Effect for Elements */
+        .electric-hover {
+            transition: transform 0.1s, box-shadow 0.1s, filter 0.1s;
+        }
+
+        .electric-hover:hover {
+            box-shadow: 10px -10px 0 var(--h2-magenta), -10px 10px 0 var(--h2-cyan), 0 0 50px #fff !important;
+            filter: contrast(150%) hue-rotate(10deg);
+            animation: punkShake 0.15s infinite alternate;
+            cursor: crosshair;
+        }
+
+        @keyframes punkShake {
+            0% {
+                transform: translate(3px, -3px) rotate(1deg) skewX(2deg);
+            }
+
+            50% {
+                transform: translate(-4px, 2px) rotate(-1.5deg) skewX(-2deg);
+            }
+
+            100% {
+                transform: translate(2px, 4px) rotate(2deg) skewX(1deg);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .photos-wrapper {
+                flex-direction: column;
+                gap: 70px;
+                perspective: none;
+            }
+
+            .hero1-frame,
+            .hero2-frame {
+                transform: none !important;
+                width: 85%;
+            }
+
+            .comic-title {
+                font-size: 3rem;
+            }
+
+            .comic-outro {
+                font-size: 2.5rem;
+            }
+
+            .comic-box {
+                padding: 30px;
+                box-shadow: 10px 10px 0 var(--love-neon), 15px 15px 0 #000;
+                width: 90%;
+            }
+
+            .choice-container {
+                flex-direction: column;
+            }
+
+            .origin-section {
+                flex-direction: column;
+                margin-top: 20px;
+            }
+
+            .origin-text-box {
+                margin-left: 0;
+                transform: rotate(2deg) translateY(-20px);
+            }
+
+            .origin-photo-frame {
+                width: 80%;
+                max-width: 300px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .comic-title {
+                font-size: 2.2rem;
+            }
+
+            .comic-paragraphs p {
+                font-size: 1.1rem;
+            }
+
+            .divider-text {
+                font-size: 3rem;
+            }
+
+            .divider-text span {
+                font-size: 2rem !important;
+            }
+
+            .film-strip-title {
+                font-size: 2.5rem;
+            }
+
+            #settings-panel {
+                width: 250px;
+            }
+
+            .portal-container {
+                transform: scale(0.8);
+            }
+
+            .origin-photo-frame {
+                width: 95%;
+            }
+
+            .hero1-frame,
+            .hero2-frame {
+                width: 95%;
+            }
+        }
+        audio {
+            display: none;
+        }
+/* =========================================
+   RESPONSIVE DESIGN (MOBILE & TABLET)
+   ========================================= */
+
+@media (max-width: 1024px) {
+    .photos-wrapper {
+        flex-direction: column;
+        gap: 30px;
+        margin-bottom: 20px;
+        transform: scale(0.85);
+    }
+    .comic-title { font-size: 2.5rem; text-align: center; }
+    .comic-paragraphs p { font-size: 1.2rem; }
+    .center-anomaly { transform: scale(0.8); margin: 20px 0; }
+}
+
+@media (max-width: 768px) {
+    .comic-box { padding: 25px; border-width: 4px; border-radius: 10px; width: 90%; }
+    .comic-box::before, .comic-box::after { display: none; } /* Hide speech bubble tails on mobile */
+    .divider-text { font-size: 2.5rem; letter-spacing: 2px; }
+    .comic-outro { font-size: 2.2rem; }
+    .origin-section { flex-direction: column; text-align: center; gap: 20px; }
+    .origin-photo-frame { width: 80%; max-width: 300px; margin: 0 auto; }
+    .origin-text-box { width: 90%; max-width: 100%; margin: 0 auto; }
+    .choice-container { flex-direction: column; gap: 15px; }
+    .choice-btn { font-size: 1rem; padding: 10px; width: 100%; }
+    
+    /* Make settings panel take full screen */
+    #settings-panel { width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; box-shadow: none; overflow-y: scroll; padding-bottom: 60px; right: -100vw; }
+    .love-counter { font-size: 0.9rem; margin-top: 10px; }
+    .hero1-frame, .hero2-frame { width: 220px; height: 320px; }
+}
+
+@media (max-width: 480px) {
+    .portal-text { font-size: 1.2rem; padding: 0 15px; }
+    .comic-title { font-size: 2rem; }
+    .comic-paragraphs p { font-size: 1rem; line-height: 1.6; }
+    .halftone-bg { background-size: 5px 5px; }
+    .comic-box { box-shadow: 10px 10px 0 var(--love-neon), 14px 14px 0 #000; }
+    .film-strip-title { font-size: 1.8rem; }
+    .film-frame { width: 200px; height: 280px; }
+    .divider-text { font-size: 1.8rem; }
+}

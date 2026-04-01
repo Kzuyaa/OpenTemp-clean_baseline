@@ -1,0 +1,57 @@
+/* THEME: Clean SaaS — Default V2 Theme */
+:root {
+    /* === BACKGROUNDS === */
+    --bg-main:              #F8F9FA;
+    --bg-card:              #FFFFFF;
+    --bg-highlight:         #1E293B;
+
+    /* === TEXT === */
+    --h1-color:             #111827;
+    --h2-color:             #1E293B;
+    --h3-color:             #374151;
+    --text-body:            #4B5563;
+    --text-muted:           #9CA3AF;
+    --text-on-dark:         #FFFFFF;
+
+    /* === ACCENT === */
+    --accent-vivid:         #6366F1;
+    --accent-soft:          #A5B4FC;
+    --accent-dark:          #4338CA;
+
+    /* === BUTTONS === */
+    --btn-primary-bg:       #6366F1;
+    --btn-primary-text:     #FFFFFF;
+    --btn-primary-hover:    #4338CA;
+    --btn-ghost-border:     #6366F1;
+    --btn-ghost-text:       #6366F1;
+    --btn-ghost-hover:      #EEF2FF;
+
+    /* === BADGES & ICONS === */
+    --badge-bg:             #EEF2FF;
+    --badge-text:           #6366F1;
+    --icon-color:           #6366F1;
+    --icon-text:            #FFFFFF;
+
+    /* === BORDERS === */
+    --border-line:          rgba(0, 0, 0, 0.08);
+    --border-card:          rgba(0, 0, 0, 0.06);
+    --divider-color:        #6366F1;
+
+    /* === STATS === */
+    --number-color:         #6366F1;
+    --number-label:         #FFFFFF;
+
+    /* === FOOTER === */
+    --footer-bg:            #1E293B;
+    --footer-text:          rgba(255, 255, 255, 0.6);
+    --footer-accent:        #6366F1;
+
+    /* === LEGACY (V1 backward compat) === */
+    --h1-red:               #6366F1;
+    --h1-black:             #111827;
+    --h1-yellow:            #A5B4FC;
+    --h2-cyan:              #6366F1;
+    --h2-magenta:           #818CF8;
+    --love-neon:            #6366F1;
+    --bg-dark:              #1E293B;
+}
