@@ -96,4 +96,4 @@ Template'i önizlemek için `index.html`'i doğrudan tarayıcıda aç veya VS Co
 
 ---
 
-*OpenTemp Engine — [github.com/Kzuyaa](https://github.com/Kzuyaa)*
+*OpenTemp Engine — [github.com/Kzuyaa/OpenTemp-clean_baseline](https://github.com/Kzuyaa/OpenTemp-clean_baseline)*
