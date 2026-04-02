@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let iframeObserver = null;
     let templateStyleBackup = {}; // ATOMIC RESTORE: Pure template state storage
     let editAbortController = null; // SHARED: Manage interaction cleanup
+    let _syncRafId = null;          // Inspector sync loop — keeps box pinned to element every frame
 
 
     // Self-load template.json — works both standalone and inside factory iframe.
@@ -173,7 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
             body.ot-is-interacting #inline-selection-box *,
             body.ot-is-interacting #inline-editor-toolbar,
             body.ot-is-interacting #inline-editor-toolbar *,
-            body.ot-is-interacting #inline-drag-global-overlay { pointer-events: auto !important; }
+            body.ot-is-interacting #inline-drag-global-overlay,
+            body.ot-is-interacting #ot-layers-panel,
+            body.ot-is-interacting #ot-layers-panel * { pointer-events: auto !important; }
 
             /* RESIZE HANDLE — hover & active affordance */
             #inline-resize-handle {
@@ -200,13 +203,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     var otResizerBox = document.createElement('div');
     otResizerBox.id = 'inline-selection-box';
-    otResizerBox.style.cssText = 'position:absolute; display:none; border:2px solid #FF4500; pointer-events:none; z-index:10000; box-sizing:border-box; transition:box-shadow 0.2s; box-shadow: 0 0 15px rgba(255, 69, 0, 0.2);';
+    otResizerBox.style.cssText = 'position:fixed; display:none; border:2px solid #FF4500; pointer-events:none; z-index:10000; box-sizing:border-box; transition:box-shadow 0.2s; box-shadow: 0 0 15px rgba(255, 69, 0, 0.2);';
     otResizerBox.appendChild(otSelectionTag);
 
     var otDragBar = document.createElement('div');
     otDragBar.id = 'inline-selection-drag-handle';
     otDragBar.style.cssText = 'position:absolute; top:-32px; left:0; right:0; height:32px; background:#FF4500; color:#FFF; font-size:11px; font-weight:800; padding:0 12px; border-radius:8px 8px 0 0; pointer-events:auto; cursor:grab; font-family:sans-serif; display:flex; align-items:center; gap:8px; box-shadow: 0 -4px 10px rgba(0,0,0,0.2);';
-    otDragBar.innerHTML = '<span style="font-size:18px; line-height:1;">⠿</span> <span style="letter-spacing:1px; text-transform:uppercase;">MOVE ELEMENT</span>';
+    otDragBar.innerHTML = '<span style="font-size:18px; line-height:1;">⠿</span> <span id="ot-drag-label" style="letter-spacing:1px; text-transform:uppercase;">MOVE ELEMENT</span><span style="margin-left:auto; font-size:9px; opacity:0.55; letter-spacing:0.5px; text-transform:none;">Shift: eksen kilidi</span>';
     otResizerBox.appendChild(otDragBar);
 
     var otResizeHandle = document.createElement('div');
@@ -321,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     var otInspector = document.createElement('div');
     otInspector.id = 'inline-element-inspector';
-    otInspector.style.cssText = 'position:absolute; display:none; background:#1A1A24; border:1px solid rgba(255,255,255,0.08); padding:6px; border-radius:12px; box-shadow:0 8px 25px rgba(0,0,0,0.5); z-index:10001; gap:8px; align-items:center; pointer-events:auto; font-family:sans-serif; backdrop-filter:blur(10px);';
+    otInspector.style.cssText = 'position:fixed; display:none; background:#1A1A24; border:1px solid rgba(255,255,255,0.08); padding:6px; border-radius:12px; box-shadow:0 8px 25px rgba(0,0,0,0.5); z-index:10001; gap:8px; align-items:center; pointer-events:auto; font-family:sans-serif; backdrop-filter:blur(10px);';
     otInspector.innerHTML = `
         <button id="ins-select-container" style="background:#2A2A35; color:#fff; border:none; padding:5px 8px; border-radius:8px; cursor:pointer; font-size:0.7rem; transition:0.2s;" title="Select Parent Container">⬆ Parent</button>
         <span style="border-left:1px solid rgba(255,255,255,0.1); height:16px;"></span>
@@ -486,6 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button id="btn-mode-edit" style="background:transparent; color:#888; border:none; padding:10px 18px; border-radius:14px; font-weight:700; cursor:pointer !important; pointer-events:auto !important; font-size:0.8rem; transition:0.2s;">📝 Edit</button>
         </div>
         <button id="btn-mode-code" style="background:rgba(0,255,204,0.1); color:#00ffcc; border:1px solid rgba(0,255,204,0.2); padding:10px 18px; border-radius:14px; font-weight:700; cursor:pointer !important; pointer-events:auto !important; font-size:0.8rem; transition:0.2s;">[&lt;/&gt; Code]</button>
+        <button id="btn-layers-toggle" style="background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.1); padding:10px 14px; border-radius:14px; font-weight:700; cursor:pointer !important; pointer-events:auto !important; font-size:0.8rem; transition:0.2s;" title="Katman Paneli">⊞</button>
         <button id="inline-export-btn" style="background:#FF4500 !important; color:#fff !important; border:none !important; padding:10px 20px !important; border-radius:14px !important; font-weight:800 !important; cursor:pointer !important; pointer-events:auto !important; display:none; align-items:center !important; gap:8px !important; font-size:0.85rem !important; transition:0.2s !important; box-shadow: 0 4px 15px rgba(255,69,0,0.3) !important; border: 1px solid rgba(255,255,255,0.1) !important;">🚀 EXPORT PROJECT</button>
     `;
 
@@ -713,11 +717,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 styleTag.innerHTML += `\n/* WIDGET: ${widgetName.toUpperCase()} */\n` + widget.css() + `\n`;
             }
 
+            // Append wrapper FIRST so getElementById works when the script runs
+            doc.body.appendChild(wrapper);
+
             const scriptTag = doc.createElement('script');
             scriptTag.className = 'ot-widget-script';
             scriptTag.text = `(function(){ ${widget.js(instanceId)} })();`;
             doc.body.appendChild(scriptTag);
-            
+
             return wrapper;
         }
     };
@@ -745,6 +752,50 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`,
         css: () => `.ot-datatable { background:rgba(10,10,12,0.8); border:1px solid rgba(255,255,255,0.1); border-radius:28px; overflow:hidden; backdrop-filter:blur(10px); }`,
         js: (id) => `const input=document.getElementById('search-${id}'); const cells=Array.from(document.querySelectorAll('#grid-${id} .dt-cell')); input.oninput=(e)=>{ const t=e.target.value.toLowerCase(); for(let i=0; i<cells.length; i+=3){ const match=(cells[i].innerText+cells[i+1].innerText+cells[i+2].innerText).toLowerCase().includes(t); cells[i].style.display=cells[i+1].style.display=cells[i+2].style.display=match?'block':'none'; } }`
+    });
+
+    WidgetEngine.register('video', {
+        html: (id) => `
+            <div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; border-radius:24px; background:#000;">
+                <iframe id="vf-${id}" src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                    style="position:absolute; top:0; left:0; width:100%; height:100%; border:none; border-radius:24px;"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+`,
+        css: () => `.ot-video { border-radius:24px; overflow:hidden; }`,
+        js: () => ``
+    });
+
+    WidgetEngine.register('todo', {
+        html: (id) => `
+            <div style="padding:28px; background:rgba(10,10,12,0.9); border:1px solid rgba(255,255,255,0.1); border-radius:28px; backdrop-filter:blur(10px);">
+                <h3 style="margin:0 0 18px; font-size:1.1rem; font-weight:800; letter-spacing:-0.3px;">My Tasks</h3>
+                <div style="display:flex; gap:8px; margin-bottom:18px;">
+                    <input id="todo-in-${id}" placeholder="Add a task..." style="flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:10px 14px; border-radius:12px; outline:none; font-size:0.9rem;">
+                    <button id="todo-add-${id}" style="background:#FF4500; border:none; color:#fff; padding:10px 20px; border-radius:12px; cursor:pointer; font-weight:800; font-size:1.1rem; line-height:1;">+</button>
+                </div>
+                <ul id="todo-list-${id}" style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:4px;"></ul>
+            </div>`,
+        css: () => `.ot-todo li { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.03); font-size:0.9rem; transition:opacity 0.2s; } .ot-todo li input[type=checkbox] { accent-color:#FF4500; width:16px; height:16px; flex-shrink:0; cursor:pointer; }`,
+        js: (id) => `
+            const inp=document.getElementById('todo-in-${id}');
+            const btn=document.getElementById('todo-add-${id}');
+            const list=document.getElementById('todo-list-${id}');
+            const addTask=()=>{
+                const v=inp.value.trim(); if(!v) return;
+                const li=document.createElement('li');
+                li.innerHTML='<input type="checkbox"><span style="flex:1;">'+v+'</span><span class="ot-todo-del" style="cursor:pointer;opacity:0.3;font-size:0.8rem;padding:2px 6px;">✕</span>';
+                li.querySelector('input').onchange=e=>{
+                    const span=li.querySelector('span');
+                    span.style.opacity=e.target.checked?'0.3':'1';
+                    span.style.textDecoration=e.target.checked?'line-through':'none';
+                };
+                li.querySelector('.ot-todo-del').onclick=()=>li.remove();
+                list.appendChild(li); inp.value='';
+            };
+            btn.onclick=addTask;
+            inp.onkeydown=e=>{ if(e.key==='Enter') addTask(); };
+        `
     });
 
     // --- 🏆 INTERACTION SAFEGUARDS ---
@@ -952,6 +1003,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    class AttrCommand {
+        constructor(element, attrName, oldVal, newVal) {
+            this.element = element;
+            this.attrName = attrName;
+            this.oldVal = oldVal;
+            this.newVal = newVal;
+        }
+        _apply(val) {
+            if (val === null || val === undefined || val === '') {
+                this.element.removeAttribute(this.attrName);
+            } else {
+                this.element.setAttribute(this.attrName, val);
+            }
+            showInspector(this.element);
+            syncSidebarFields();
+        }
+        execute() { this._apply(this.newVal); showStatusToast(`Set: ${this.attrName}`); }
+        undo()    { this._apply(this.oldVal); showStatusToast(`Undo: ${this.attrName}`); }
+    }
+
     class DeleteCommand {
         constructor(element) {
             this.element = element;
@@ -1018,7 +1089,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // copies and leave the live JS references pointing to detached nodes.
             ['inline-selection-box', 'inline-element-inspector', 'inline-drag-global-overlay',
              'ot-premium-ui-styles', 'resizer-selection-tag', 'ot-status-toast',
-             'inline-editor-toolbar', 'inline-editor-sidebar'].forEach(id => {
+             'inline-editor-toolbar', 'inline-editor-sidebar', 'ot-layers-panel'].forEach(id => {
                 const el = clone.querySelector(`#${id}`);
                 if (el) el.remove();
             });
@@ -1105,13 +1176,25 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const bcp = panel.querySelector('#bg-color-pick');
         if (bcp) bcp.value = rgbToHex(cs.backgroundColor);
+
+        // Tag-specific attribute sync (for undo/redo)
+        const _tag = selectedElement.tagName.toLowerCase();
+        const _sa = (id, attr, el = selectedElement) => { const f = panel.querySelector(id); if (f) f.value = el.getAttribute(attr) || ''; };
+        const _sb = (id, attr, el = selectedElement) => { const f = panel.querySelector(id); if (f) f.checked = el.hasAttribute(attr); };
+        if (_tag === 'img')  { _sa('#tag-img-src','src'); _sa('#tag-img-alt','alt'); }
+        if (_tag === 'a')    { _sa('#tag-a-href','href'); const t=panel.querySelector('#tag-a-text'); if(t) t.value=selectedElement.innerText; _sb('#tag-a-newtab','target'); }
+        if (_tag === 'video'){ _sa('#tag-video-src','src'); _sa('#tag-video-poster','poster'); _sb('#tag-video-autoplay','autoplay'); _sb('#tag-video-loop','loop'); _sb('#tag-video-controls','controls'); _sb('#tag-video-muted','muted'); }
+        if (_tag === 'iframe'){ _sa('#tag-iframe-src','src'); }
+        if (_tag === 'input'){ _sa('#tag-input-placeholder','placeholder'); _sa('#tag-input-value','value'); const s=panel.querySelector('#tag-input-type'); if(s) s.value=selectedElement.getAttribute('type')||'text'; }
+        if (_tag === 'audio'){ _sa('#tag-audio-src','src'); _sb('#tag-audio-controls','controls'); }
+        const _eid = panel.querySelector('#tag-el-id'); if (_eid) _eid.value = selectedElement.id || '';
     }
 
     function reattachSystemElements() {
         // SnapshotCommand.undo/execute replaces doc.body.innerHTML, which silently
         // detaches every system element from the DOM. Their closure references remain
         // valid — re-appending them is safe and instantaneous.
-        [otDragOverlay, otInspector, otResizerBox, otSidebar, otToolbar, otCodePanel].forEach(el => {
+        [otDragOverlay, otInspector, otResizerBox, otSidebar, otToolbar, otCodePanel, otLayersPanel].forEach(el => {
             if (el && !document.body.contains(el)) document.body.appendChild(el);
         });
     }
@@ -1160,6 +1243,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     setupGlobalKeyHandlers(document);
+
+    function getYoutubeId(url) {
+        if (!url) return null;
+        const patterns = [/youtu\.be\/([^?&#\s]+)/, /[?&]v=([^&#\s]+)/, /\/embed\/([^?&#\s]+)/, /\/shorts\/([^?&#\s]+)/];
+        for (const p of patterns) { const m = url.match(p); if (m && m[1]) return m[1]; }
+        return null;
+    }
 
     function loadTab(tabName) {
         activeTab = tabName;
@@ -1319,177 +1409,642 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn('OT themes tab:', e);
             }
         }
-        else if (tabName === 'elements') { 
+        else if (tabName === 'elements') {
             panel.innerHTML = `
-                <div class="section-label">Page Blocks (Architect Edition)</div>
+                <div class="section-label">Page Blocks</div>
                 <div class="typography-grid">
-                    <button class="typography-btn" onclick="insertElement('hero-split')">Hero Split</button>
-                    <button class="typography-btn" onclick="insertElement('bento-grid')">Bento Grid</button>
-                    <button class="typography-btn" onclick="insertElement('feature-trio')">Feature Trio</button>
-                    <button class="typography-btn" onclick="insertElement('cta-banner')">CTA Banner</button>
-                    <button class="typography-btn" onclick="insertElement('faq-accord')">FAQ Accord</button>
-                    <button class="typography-btn" onclick="insertElement('footer-mod')">Modern Foot</button>
+                    <button class="typography-btn" onclick="insertElement('hero-split')" title="İki sütunlu hero bölümü">Hero</button>
+                    <button class="typography-btn" onclick="insertElement('bento-grid')" title="Bento kutucuk grid">Bento</button>
+                    <button class="typography-btn" onclick="insertElement('feature-trio')" title="3 özellik kartı">Features</button>
+                    <button class="typography-btn" onclick="insertElement('cta-banner')" title="Call-to-action banner">CTA</button>
+                    <button class="typography-btn" onclick="insertElement('testimonial')" title="Alıntı / referans bloğu">Quote</button>
+                    <button class="typography-btn" onclick="insertElement('stats-row')" title="İstatistik sayaçları">Stats</button>
+                    <button class="typography-btn" onclick="insertElement('faq-accord')" title="Soru-cevap accordion">FAQ</button>
+                    <button class="typography-btn" onclick="insertElement('footer-mod')" title="Footer bölümü">Footer</button>
                 </div>
-                <div class="section-label" style="margin-top:20px;">Standard Units</div>
+                <div class="section-label" style="margin-top:20px;">Temel Elementler</div>
                 <div class="typography-grid">
-                    <button class="typography-btn" onclick="insertElement('title')">H1</button>
-                    <button class="typography-btn" onclick="insertElement('text')">Text</button>
-                    <button class="typography-btn" onclick="insertElement('image')">Img</button>
-                    <button class="typography-btn" onclick="insertElement('button')">Btn</button>
+                    <button class="typography-btn" onclick="insertElement('title')" title="H1 başlık">H1</button>
+                    <button class="typography-btn" onclick="insertElement('text')" title="Metin paragrafı">Text</button>
+                    <button class="typography-btn" onclick="insertElement('image')" title="Resim bloğu">Img</button>
+                    <button class="typography-btn" onclick="insertElement('button')" title="Buton">Btn</button>
+                    <button class="typography-btn" onclick="insertElement('divider')" title="Ayırıcı çizgi">—</button>
+                    <button class="typography-btn" onclick="insertElement('spacer')" title="Boşluk bloğu">Space</button>
                 </div>
-                <div class="section-label" style="margin-top:20px;">Developer Tab</div>
+                <div class="section-label" style="margin-top:20px;">Geliştirici</div>
                 <div class="typography-grid">
-                    <button class="typography-btn" onclick="insertElement('raw-html')" style="background:rgba(0,255,204,0.1); color:#00ffcc; border-color:#00ffcc;">[IDE] Source</button>
-                </div>
-            `; 
-        }
-        else if (tabName === 'widgets') { 
-            panel.innerHTML = `
-                <div class="section-label">Interactive Modules</div>
-                <div class="typography-grid">
-                    <button class="typography-btn" onclick="insertElement('slider')">Photo Slider</button>
-                    <button class="typography-btn" onclick="insertElement('datatable')">Data Table</button>
-                    <button class="typography-btn" onclick="insertElement('video')">Video</button>
-                    <button class="typography-btn" onclick="insertElement('todo')">Todo</button>
-                </div>
-            `; 
-        }
-
-        else if (tabName === 'edit') {
-            if (!selectedElement) { 
-                panel.innerHTML = '<div style="text-align:center; padding:40px; color:#666;"><h3>No Element Selected</h3><p>Click any element in the template to start editing its properties here.</p></div>'; 
-                return; 
-            }
-            
-            const cs = getCS(selectedElement);
-            const fs = parseInt(cs.fontSize) || 16;
-            const pad = parseInt(cs.padding) || 0;
-            const br = parseInt(cs.borderRadius) || 0;
-            const lh = parseFloat(cs.lineHeight) || 1.2;
-
-            panel.innerHTML = `
-                <div class="edit-group">
-                    <span class="section-label">Content Editor</span>
-                    <textarea id="edit-text-val" placeholder="Element content..." style="width:100% !important; background:rgba(0,0,0,0.3) !important; border:1px solid rgba(255,255,255,0.1) !important; border-radius:12px !important; color:#fff !important; padding:12px !important; font-family:inherit !important; font-size:0.9rem !important; resize:vertical !important; min-height:80px !important;"></textarea>
-                </div>
-                
-                <div class="edit-group">
-                    <span class="section-label">Typography (Architect Edition)</span>
-                    <div class="slider-row">
-                        <span class="slider-label">Font Size</span>
-                        <span class="slider-val" id="fs-val">${fs}px</span>
-                    </div>
-                    <input type="range" class="ot-range" id="size-range" min="8" max="150" value="${fs}">
-                    
-                    <div class="slider-row">
-                        <span class="slider-label">Line Height</span>
-                        <span class="slider-val" id="lh-val">${lh}</span>
-                    </div>
-                    <input type="range" class="ot-range" id="lh-range" min="0.8" max="3" step="0.1" value="${lh}">
-                </div>
-
-                <div class="edit-group">
-                    <span class="section-label">Layout & Geometry</span>
-                    <div class="slider-row">
-                        <span class="slider-label">Padding</span>
-                        <span class="slider-val" id="pad-val">${pad}px</span>
-                    </div>
-                    <input type="range" class="ot-range" id="pad-range" min="0" max="200" value="${pad}">
-                    
-                    <div class="slider-row">
-                        <span class="slider-label">Corner Radius</span>
-                        <span class="slider-val" id="br-val">${br}px</span>
-                    </div>
-                    <input type="range" class="ot-range" id="br-range" min="0" max="100" value="${br}">
-                </div>
-
-                <div class="edit-group">
-                    <span class="section-label">Architect Palette</span>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                        <div>
-                            <span class="slider-label" style="display:block; margin-bottom:8px;">Text Color</span>
-                            <input type="color" class="ot-color-input" id="color-pick" value="${rgbToHex(cs.color)}">
-                        </div>
-                        <div>
-                            <span class="slider-label" style="display:block; margin-bottom:8px;">Backdrop Color</span>
-                            <input type="color" class="ot-color-input" id="bg-color-pick" value="${rgbToHex(cs.backgroundColor)}">
-                        </div>
-                    </div>
+                    <button class="typography-btn" onclick="insertElement('raw-html')" style="background:rgba(0,255,204,0.1); color:#00ffcc; border-color:rgba(0,255,204,0.3);" title="Ham HTML IDE">IDE</button>
                 </div>
             `;
-            
-            const textInput = panel.querySelector('#edit-text-val');
-            textInput.value = selectedElement.innerHTML; // Safe: programmatic assignment avoids innerHTML injection
-            let oldTextVal = "";
-            textInput.addEventListener('focus', () => { oldTextVal = selectedElement.innerHTML; });
-            textInput.addEventListener('input', (e) => { 
-                selectedElement.innerHTML = e.target.value; 
-                showInspector(selectedElement); 
-            });
-            textInput.addEventListener('change', (e) => {
-                if (oldTextVal !== e.target.value) {
-                    window.historyManager.execute(new TextEditCommand(selectedElement, oldTextVal, e.target.value));
-                }
-            });
-            
-            const syncSlider = (id, prop, valId, suffix = '') => {
-                const el = panel.querySelector(id);
-                if (el) {
-                    let oldVal = "";
-                    const capture = () => { oldVal = selectedElement.style[prop] || getCS(selectedElement)[prop]; };
-                    el.addEventListener('mousedown', capture);
-                    el.addEventListener('touchstart', capture);
-                    el.addEventListener('input', (e) => {
-                        selectedElement.style[prop] = e.target.value + suffix;
-                        const label = panel.querySelector(valId);
-                        if (label) label.innerText = e.target.value + suffix;
-                        showInspector(selectedElement);
+        }
+        else if (tabName === 'widgets') {
+            panel.innerHTML = `
+                <div class="section-label">Interaktif Modüller</div>
+                <div class="typography-grid">
+                    <button class="typography-btn" onclick="insertElement('slider')" title="Fotoğraf slayt gösterisi">Slider</button>
+                    <button class="typography-btn" onclick="insertElement('datatable')" title="Aranabilir veri tablosu">Table</button>
+                    <button class="typography-btn" onclick="insertElement('video')" title="YouTube video embed">Video</button>
+                    <button class="typography-btn" onclick="insertElement('todo')" title="Görev listesi">Todo</button>
+                </div>
+                <p style="font-size:0.72rem; opacity:0.35; margin-top:16px; line-height:1.6;">Widget'lar sayfaya interaktif JavaScript blokları olarak eklenir. Export'ta tam çalışır halde gelir.</p>
+            `;
+        }
+
+
+
+        else if (tabName === 'edit') {
+            if (!selectedElement) {
+                panel.innerHTML = '<div style="text-align:center;padding:40px;color:#666;"><h3>No Element Selected</h3><p>Click any element in the template to start editing its properties here.</p></div>';
+                return;
+            }
+
+            const cs  = getCS(selectedElement);
+            const fs  = parseInt(cs.fontSize) || 16;
+            const pad = parseInt(cs.padding) || 0;
+            const br  = parseInt(cs.borderRadius) || 0;
+            const lh  = parseFloat(cs.lineHeight) || 1.2;
+
+            const tag = selectedElement.tagName.toLowerCase();
+            const parentWidget = selectedElement.closest('.ot-widget');
+            const widgetType   = parentWidget
+                ? (['slider','datatable','video','todo'].find(w => parentWidget.classList.contains(`ot-${w}`)) || null)
+                : null;
+
+            // Shared input style
+            const IS = 'width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;padding:10px 12px;font-family:inherit;font-size:0.82rem;box-sizing:border-box;outline:none;display:block;';
+            const LBL = 'display:block;font-size:0.7rem;font-weight:700;opacity:0.6;text-transform:uppercase;margin:10px 0 5px;';
+            const CHK = 'display:flex;align-items:center;gap:8px;margin-top:10px;font-size:0.78rem;color:#a1a1aa;cursor:pointer;';
+
+            // ── TAG-SPECIFIC SECTION ──────────────────────────────────────
+            const noContentTags = ['img','video','audio','iframe','input'];
+            const showContentEditor = !noContentTags.includes(tag);
+            let tagSection = '';
+
+            if (tag === 'img') {
+                tagSection = `<div class="edit-group">
+                    <span class="section-label">Image</span>
+                    <button id="tag-img-browse" class="typography-btn" style="width:100%;aspect-ratio:unset;padding:12px;margin-bottom:10px;background:rgba(255,69,0,0.12);border-color:rgba(255,69,0,0.3);color:#FF4500;font-weight:800;">📁 Browse / Upload Image</button>
+                    <span style="${LBL}">Or paste Image URL</span>
+                    <input id="tag-img-src" type="url" placeholder="https://..." value="${(selectedElement.getAttribute('src')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                    <span style="${LBL}">Alt Text</span>
+                    <input id="tag-img-alt" type="text" placeholder="Describe the image..." value="${(selectedElement.getAttribute('alt')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                </div>`;
+            } else if (tag === 'a') {
+                const isNewTab = selectedElement.getAttribute('target') === '_blank';
+                tagSection = `<div class="edit-group">
+                    <span class="section-label">Link</span>
+                    <span style="${LBL}">URL</span>
+                    <input id="tag-a-href" type="url" placeholder="https://..." value="${(selectedElement.getAttribute('href')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                    <span style="${LBL}">Display Text</span>
+                    <input id="tag-a-text" type="text" value="${(selectedElement.innerText||'').replace(/"/g,'&quot;')}" style="${IS}">
+                    <label style="${CHK}"><input type="checkbox" id="tag-a-newtab" ${isNewTab?'checked':''}> Open in new tab</label>
+                </div>`;
+            } else if (tag === 'video') {
+                tagSection = `<div class="edit-group">
+                    <span class="section-label">Video</span>
+                    <span style="${LBL}">Video Source URL</span>
+                    <input id="tag-video-src" type="url" placeholder="https://..." value="${(selectedElement.getAttribute('src')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                    <span style="${LBL}">Poster Image URL</span>
+                    <input id="tag-video-poster" type="url" placeholder="https://..." value="${(selectedElement.getAttribute('poster')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                    <label style="${CHK}"><input type="checkbox" id="tag-video-autoplay" ${selectedElement.hasAttribute('autoplay')?'checked':''}> Autoplay</label>
+                    <label style="${CHK}"><input type="checkbox" id="tag-video-loop" ${selectedElement.hasAttribute('loop')?'checked':''}> Loop</label>
+                    <label style="${CHK}"><input type="checkbox" id="tag-video-controls" ${selectedElement.hasAttribute('controls')?'checked':''}> Controls</label>
+                    <label style="${CHK}"><input type="checkbox" id="tag-video-muted" ${selectedElement.hasAttribute('muted')?'checked':''}> Muted</label>
+                </div>`;
+            } else if (tag === 'iframe') {
+                tagSection = `<div class="edit-group">
+                    <span class="section-label">Embed</span>
+                    <span style="${LBL}">Embed URL</span>
+                    <input id="tag-iframe-src" type="url" placeholder="https://..." value="${(selectedElement.getAttribute('src')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+                        <div><span style="${LBL}">Width</span><input id="tag-iframe-w" type="number" placeholder="px" value="${parseInt(selectedElement.style.width)||''}" style="${IS}"></div>
+                        <div><span style="${LBL}">Height</span><input id="tag-iframe-h" type="number" placeholder="px" value="${parseInt(selectedElement.style.height)||''}" style="${IS}"></div>
+                    </div>
+                </div>`;
+            } else if (tag === 'input') {
+                const itype = selectedElement.getAttribute('type') || 'text';
+                tagSection = `<div class="edit-group">
+                    <span class="section-label">Input Field</span>
+                    <span style="${LBL}">Placeholder</span>
+                    <input id="tag-input-placeholder" type="text" value="${(selectedElement.getAttribute('placeholder')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                    <span style="${LBL}">Default Value</span>
+                    <input id="tag-input-value" type="text" value="${(selectedElement.getAttribute('value')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                    <span style="${LBL}">Type</span>
+                    <select id="tag-input-type" style="${IS}margin-top:0;">
+                        ${['text','email','password','number','tel','url','search'].map(t=>`<option value="${t}"${itype===t?' selected':''}>${t}</option>`).join('')}
+                    </select>
+                </div>`;
+            } else if (tag === 'textarea') {
+                tagSection = `<div class="edit-group">
+                    <span class="section-label">Textarea</span>
+                    <span style="${LBL}">Placeholder</span>
+                    <input id="tag-input-placeholder" type="text" value="${(selectedElement.getAttribute('placeholder')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                </div>`;
+            } else if (tag === 'button') {
+                tagSection = `<div class="edit-group">
+                    <span class="section-label">Button</span>
+                    <span style="${LBL}">Button Text</span>
+                    <input id="tag-button-text" type="text" value="${(selectedElement.textContent||'').trim().replace(/"/g,'&quot;')}" style="${IS}">
+                </div>`;
+            } else if (tag === 'audio') {
+                tagSection = `<div class="edit-group">
+                    <span class="section-label">Audio</span>
+                    <span style="${LBL}">Audio Source URL</span>
+                    <input id="tag-audio-src" type="url" placeholder="https://..." value="${(selectedElement.getAttribute('src')||'').replace(/"/g,'&quot;')}" style="${IS}">
+                    <label style="${CHK}"><input type="checkbox" id="tag-audio-controls" ${selectedElement.hasAttribute('controls')?'checked':''}> Show controls</label>
+                </div>`;
+            }
+
+            // Element identity (all elements)
+            tagSection += `<div class="edit-group">
+                <span class="section-label">Identity</span>
+                <span style="${LBL}">Element ID</span>
+                <input id="tag-el-id" type="text" placeholder="e.g. hero-title" value="${selectedElement.id||''}" style="${IS}">
+                <span style="${LBL}">Tag / Classes</span>
+                <input type="text" value="&lt;${tag}&gt; ${(selectedElement.className||'').toString().split(' ').filter(Boolean).slice(0,3).join(' ')}" readonly style="${IS}opacity:0.35;cursor:default;margin-top:0;">
+            </div>`;
+
+            // ── WIDGET-SPECIFIC SECTION ───────────────────────────────────
+            let widgetSection = '';
+            if (widgetType === 'video') {
+                const wIframe = parentWidget.querySelector('iframe');
+                const curSrc = wIframe ? (wIframe.getAttribute('src')||'') : '';
+                widgetSection = `<div class="edit-group">
+                    <span class="section-label">YouTube Video</span>
+                    <span style="${LBL}">YouTube URL or Video ID</span>
+                    <input id="widget-video-url" type="url" placeholder="https://youtube.com/watch?v=..." value="${curSrc.replace(/"/g,'&quot;')}" style="${IS}">
+                    <button id="widget-video-apply" class="typography-btn" style="width:100%;margin-top:10px;aspect-ratio:unset;padding:10px;">Apply Video</button>
+                </div>`;
+            } else if (widgetType === 'slider') {
+                const imgs = parentWidget.querySelectorAll('.slide img');
+                widgetSection = `<div class="edit-group">
+                    <span class="section-label">Slider Images</span>
+                    ${[0,1,2].map(i => `<span style="${LBL}">Slide ${i+1} URL</span><input id="widget-slider-img${i}" type="url" placeholder="https://..." value="${imgs[i]?(imgs[i].getAttribute('src')||''):''}" style="${IS}">`).join('')}
+                </div>`;
+            } else if (widgetType === 'datatable') {
+                const headers = Array.from(parentWidget.querySelectorAll('.dt-grid > div')).slice(0,3);
+                widgetSection = `<div class="edit-group">
+                    <span class="section-label">Table Columns</span>
+                    ${[0,1,2].map(i => `<span style="${LBL}">Column ${i+1}</span><input id="widget-dt-col${i}" type="text" value="${headers[i]?(headers[i].textContent.trim().replace(/"/g,'&quot;')):'Col '+(i+1)}" style="${IS}">`).join('')}
+                </div>`;
+            } else if (widgetType === 'todo') {
+                widgetSection = `<div class="edit-group">
+                    <span class="section-label">Todo Widget</span>
+                    <p style="font-size:0.78rem;color:#666;line-height:1.6;margin:0;">Use the widget's built-in Add button to manage tasks.</p>
+                </div>`;
+            }
+
+            // ── CONTENT + STYLE SECTIONS ──────────────────────────────────
+            const contentSection = showContentEditor ? `
+                <div class="edit-group">
+                    <span class="section-label">Content Editor</span>
+                    <textarea id="edit-text-val" placeholder="Element content..." style="width:100% !important;background:rgba(0,0,0,0.3) !important;border:1px solid rgba(255,255,255,0.1) !important;border-radius:12px !important;color:#fff !important;padding:12px !important;font-family:inherit !important;font-size:0.9rem !important;resize:vertical !important;min-height:80px !important;"></textarea>
+                </div>` : '';
+
+            const styleSection = `
+                <div class="edit-group">
+                    <span class="section-label">Typography</span>
+                    <div class="slider-row"><span class="slider-label">Font Size</span><span class="slider-val" id="fs-val">${fs}px</span></div>
+                    <input type="range" class="ot-range" id="size-range" min="8" max="150" value="${fs}">
+                    <div class="slider-row"><span class="slider-label">Line Height</span><span class="slider-val" id="lh-val">${lh}</span></div>
+                    <input type="range" class="ot-range" id="lh-range" min="0.8" max="3" step="0.1" value="${lh}">
+                </div>
+                <div class="edit-group">
+                    <span class="section-label">Layout</span>
+                    <div class="slider-row"><span class="slider-label">Padding</span><span class="slider-val" id="pad-val">${pad}px</span></div>
+                    <input type="range" class="ot-range" id="pad-range" min="0" max="200" value="${pad}">
+                    <div class="slider-row"><span class="slider-label">Corner Radius</span><span class="slider-val" id="br-val">${br}px</span></div>
+                    <input type="range" class="ot-range" id="br-range" min="0" max="100" value="${br}">
+                </div>
+                <div class="edit-group">
+                    <span class="section-label">Colors</span>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div><span class="slider-label" style="display:block;margin-bottom:8px;">Text</span><input type="color" class="ot-color-input" id="color-pick" value="${rgbToHex(cs.color)}"></div>
+                        <div><span class="slider-label" style="display:block;margin-bottom:8px;">Background</span><input type="color" class="ot-color-input" id="bg-color-pick" value="${rgbToHex(cs.backgroundColor)}"></div>
+                    </div>
+                </div>`;
+
+            panel.innerHTML = tagSection + widgetSection + contentSection + styleSection;
+
+            // ── BIND: Tag-specific fields ─────────────────────────────────
+            const bindAttr = (qid, attr, targetEl = selectedElement) => {
+                const el = panel.querySelector(qid); if (!el) return;
+                let ov = '';
+                el.addEventListener('focus', () => { ov = targetEl.getAttribute(attr) || ''; });
+                el.addEventListener('change', e => { if (ov !== e.target.value) window.historyManager.execute(new AttrCommand(targetEl, attr, ov, e.target.value)); });
+            };
+            const bindBool = (qid, attr, targetEl = selectedElement) => {
+                const el = panel.querySelector(qid); if (!el) return;
+                el.addEventListener('change', e => {
+                    const ov = targetEl.hasAttribute(attr) ? attr : null;
+                    const nv = e.target.checked ? attr : null;
+                    if (ov !== nv) window.historyManager.execute(new AttrCommand(targetEl, attr, ov, nv));
+                });
+            };
+
+            if (tag === 'img') {
+                bindAttr('#tag-img-src', 'src');
+                bindAttr('#tag-img-alt', 'alt');
+                const browseBtn = panel.querySelector('#tag-img-browse');
+                if (browseBtn) {
+                    browseBtn.addEventListener('click', () => {
+                        const fi = document.createElement('input');
+                        fi.type = 'file';
+                        fi.accept = 'image/*';
+                        fi.onchange = e => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = ev => {
+                                const oldSrc = selectedElement.getAttribute('src') || '';
+                                const newSrc = ev.target.result;
+                                window.historyManager.execute(new AttrCommand(selectedElement, 'src', oldSrc, newSrc));
+                                const srcInput = panel.querySelector('#tag-img-src');
+                                if (srcInput) srcInput.value = '(local file)';
+                            };
+                            reader.readAsDataURL(file);
+                        };
+                        fi.click();
                     });
-                    el.addEventListener('change', (e) => {
-                        const newVal = e.target.value + suffix;
-                        if (oldVal !== newVal) {
-                            window.historyManager.execute(new StyleCommand(selectedElement, prop, oldVal, newVal));
+                }
+            }
+            if (tag === 'a') {
+                bindAttr('#tag-a-href', 'href');
+                const aText = panel.querySelector('#tag-a-text');
+                if (aText) { let ov=''; aText.addEventListener('focus',()=>{ov=selectedElement.innerHTML;}); aText.addEventListener('change',e=>{ if(ov!==e.target.value) window.historyManager.execute(new TextEditCommand(selectedElement,ov,e.target.value)); }); }
+                bindBool('#tag-a-newtab', '_blank'); // store as value
+                // Override: target is a value attr, not boolean
+                const ntCb = panel.querySelector('#tag-a-newtab');
+                if (ntCb) { ntCb.removeEventListener('change', ntCb._boolHandler); ntCb.addEventListener('change', e => { const ov=selectedElement.getAttribute('target'); const nv=e.target.checked?'_blank':null; window.historyManager.execute(new AttrCommand(selectedElement,'target',ov,nv)); }); }
+            }
+            if (tag === 'video') { bindAttr('#tag-video-src','src'); bindAttr('#tag-video-poster','poster'); ['autoplay','loop','controls','muted'].forEach(a=>bindBool(`#tag-video-${a}`,a)); }
+            if (tag === 'iframe') {
+                bindAttr('#tag-iframe-src','src');
+                const bw = panel.querySelector('#tag-iframe-w'), bh = panel.querySelector('#tag-iframe-h');
+                if (bw) { let ov=''; bw.addEventListener('focus',()=>{ov=selectedElement.style.width||'';}); bw.addEventListener('change',e=>{ const nv=e.target.value?e.target.value+'px':''; if(ov!==nv) window.historyManager.execute(new StyleCommand(selectedElement,'width',ov,nv)); }); }
+                if (bh) { let ov=''; bh.addEventListener('focus',()=>{ov=selectedElement.style.height||'';}); bh.addEventListener('change',e=>{ const nv=e.target.value?e.target.value+'px':''; if(ov!==nv) window.historyManager.execute(new StyleCommand(selectedElement,'height',ov,nv)); }); }
+            }
+            if (tag === 'input' || tag === 'textarea') { bindAttr('#tag-input-placeholder','placeholder'); bindAttr('#tag-input-value','value'); }
+            if (tag === 'input') { const sel=panel.querySelector('#tag-input-type'); if(sel){ sel.addEventListener('change',e=>{ const ov=selectedElement.getAttribute('type')||'text'; if(ov!==e.target.value) window.historyManager.execute(new AttrCommand(selectedElement,'type',ov,e.target.value)); }); } }
+            if (tag === 'button') { const bt=panel.querySelector('#tag-button-text'); if(bt){ let ov=''; bt.addEventListener('focus',()=>{ov=selectedElement.innerHTML;}); bt.addEventListener('change',e=>{ if(ov!==e.target.value) window.historyManager.execute(new TextEditCommand(selectedElement,ov,e.target.value)); }); } }
+            if (tag === 'audio') { bindAttr('#tag-audio-src','src'); bindBool('#tag-audio-controls','controls'); }
+
+            // Element ID
+            const elId = panel.querySelector('#tag-el-id');
+            if (elId) { let ov=''; elId.addEventListener('focus',()=>{ov=selectedElement.id||'';}); elId.addEventListener('change',e=>{ const nv=e.target.value.trim(); if(ov!==nv) window.historyManager.execute(new AttrCommand(selectedElement,'id',ov,nv)); }); }
+
+            // ── BIND: Widget fields ───────────────────────────────────────
+            if (widgetType === 'video') {
+                const applyBtn = panel.querySelector('#widget-video-apply');
+                const urlInp   = panel.querySelector('#widget-video-url');
+                if (applyBtn && urlInp) {
+                    applyBtn.addEventListener('click', () => {
+                        const raw = urlInp.value.trim();
+                        const vid = getYoutubeId(raw);
+                        const newSrc = vid ? `https://www.youtube.com/embed/${vid}` : raw;
+                        const iframeEl = parentWidget.querySelector('iframe');
+                        if (iframeEl && iframeEl.getAttribute('src') !== newSrc) {
+                            window.historyManager.execute(new AttrCommand(iframeEl, 'src', iframeEl.getAttribute('src')||'', newSrc));
                         }
                     });
                 }
-            };
+            }
+            if (widgetType === 'slider') {
+                const slideImgs = parentWidget.querySelectorAll('.slide img');
+                [0,1,2].forEach(i => {
+                    const inp = panel.querySelector(`#widget-slider-img${i}`);
+                    const img = slideImgs[i];
+                    if (!inp || !img) return;
+                    let ov = '';
+                    inp.addEventListener('focus', () => { ov = img.getAttribute('src')||''; });
+                    inp.addEventListener('change', e => { if(ov!==e.target.value) window.historyManager.execute(new AttrCommand(img,'src',ov,e.target.value)); });
+                });
+            }
+            if (widgetType === 'datatable') {
+                const headers = Array.from(parentWidget.querySelectorAll('.dt-grid > div')).slice(0,3);
+                [0,1,2].forEach(i => {
+                    const inp = panel.querySelector(`#widget-dt-col${i}`);
+                    const hdr = headers[i];
+                    if (!inp || !hdr) return;
+                    let ov = '';
+                    inp.addEventListener('focus', () => { ov = hdr.textContent.trim(); });
+                    inp.addEventListener('change', e => { if(ov!==e.target.value) window.historyManager.execute(new TextEditCommand(hdr,ov,e.target.value)); });
+                });
+            }
 
-            syncSlider('#size-range', 'fontSize', '#fs-val', 'px');
-            syncSlider('#lh-range', 'lineHeight', '#lh-val', '');
-            syncSlider('#pad-range', 'padding', '#pad-val', 'px');
-            syncSlider('#br-range', 'borderRadius', '#br-val', 'px');
-
-            const cp = panel.querySelector('#color-pick');
-            let oldColor = "";
-            cp.addEventListener('focus', () => { oldColor = selectedElement.style.color || getCS(selectedElement).color; });
-            cp.addEventListener('input', (e) => { 
-                selectedElement.style.color = e.target.value; 
-                showInspector(selectedElement); 
-            });
-            cp.addEventListener('change', (e) => {
-                if (oldColor !== e.target.value) {
-                    window.historyManager.execute(new StyleCommand(selectedElement, 'color', oldColor, e.target.value));
+            // ── BIND: Content textarea ────────────────────────────────────
+            if (showContentEditor) {
+                const textInput = panel.querySelector('#edit-text-val');
+                const hasChildElements = selectedElement.children.length > 0;
+                if (hasChildElements) {
+                    textInput.value = selectedElement.innerText.trim();
+                    textInput.placeholder = 'Plain text — use [</> Code] for HTML structure editing';
+                    textInput.style.opacity = '0.6';
+                    textInput.readOnly = true;
+                } else {
+                    textInput.value = selectedElement.innerHTML;
+                    let oldTextVal = '';
+                    textInput.addEventListener('focus', () => { oldTextVal = selectedElement.innerHTML; });
+                    textInput.addEventListener('input', e => { selectedElement.innerHTML = e.target.value; showInspector(selectedElement); });
+                    textInput.addEventListener('change', e => { if (oldTextVal !== e.target.value) window.historyManager.execute(new TextEditCommand(selectedElement, oldTextVal, e.target.value)); });
                 }
-            });
+            }
+
+            // ── BIND: Style sliders ───────────────────────────────────────
+            const syncSlider = (id, prop, valId, suffix = '') => {
+                const el = panel.querySelector(id); if (!el) return;
+                let oldVal = '';
+                el.addEventListener('mousedown', () => { oldVal = selectedElement.style[prop] || getCS(selectedElement)[prop]; });
+                el.addEventListener('touchstart', () => { oldVal = selectedElement.style[prop] || getCS(selectedElement)[prop]; });
+                el.addEventListener('input', e => { selectedElement.style[prop] = e.target.value + suffix; const lbl=panel.querySelector(valId); if(lbl) lbl.innerText=e.target.value+suffix; showInspector(selectedElement); });
+                el.addEventListener('change', e => { const nv=e.target.value+suffix; if(oldVal!==nv) window.historyManager.execute(new StyleCommand(selectedElement,prop,oldVal,nv)); });
+            };
+            syncSlider('#size-range','fontSize','#fs-val','px');
+            syncSlider('#lh-range','lineHeight','#lh-val','');
+            syncSlider('#pad-range','padding','#pad-val','px');
+            syncSlider('#br-range','borderRadius','#br-val','px');
+
+            // ── BIND: Color pickers ───────────────────────────────────────
+            const cp = panel.querySelector('#color-pick');
+            let oldColor = '';
+            cp.addEventListener('focus', () => { oldColor = selectedElement.style.color || getCS(selectedElement).color; });
+            cp.addEventListener('input', e => { selectedElement.style.color = e.target.value; showInspector(selectedElement); });
+            cp.addEventListener('change', e => { if(oldColor!==e.target.value) window.historyManager.execute(new StyleCommand(selectedElement,'color',oldColor,e.target.value)); });
 
             const bcp = panel.querySelector('#bg-color-pick');
-            let oldBg = "";
+            let oldBg = '';
             bcp.addEventListener('focus', () => { oldBg = selectedElement.style.backgroundColor || getCS(selectedElement).backgroundColor; });
-            bcp.addEventListener('input', (e) => { 
-                selectedElement.style.backgroundColor = e.target.value; 
-                showInspector(selectedElement); 
-            });
-            bcp.addEventListener('change', (e) => {
-                if (oldBg !== e.target.value) {
-                    window.historyManager.execute(new StyleCommand(selectedElement, 'backgroundColor', oldBg, e.target.value));
-                }
-            });
+            bcp.addEventListener('input', e => { selectedElement.style.backgroundColor = e.target.value; showInspector(selectedElement); });
+            bcp.addEventListener('change', e => { if(oldBg!==e.target.value) window.historyManager.execute(new StyleCommand(selectedElement,'backgroundColor',oldBg,e.target.value)); });
         }
 
     }
 
     window.loadTab = loadTab; // Expose for inline onclick handlers (e.g. raw-html preset)
     otSidebar.querySelectorAll('.panel-tab').forEach(b => b.addEventListener('click', () => loadTab(b.getAttribute('data-tab'))));
+
+    // ─────────────────────────────────────────────────────────────────
+    // FLOATING LAYERS PANEL
+    // ─────────────────────────────────────────────────────────────────
+    var otLayersPanel = document.createElement('div');
+    otLayersPanel.id = 'ot-layers-panel';
+    otLayersPanel.style.cssText = [
+        'position:fixed !important',
+        'left:0 !important',
+        'top:50% !important',
+        'transform:translateY(-50%) translateX(-100%) !important',
+        'width:370px !important',
+        'max-height:72vh !important',
+        'background:rgba(10,10,14,0.97) !important',
+        'backdrop-filter:blur(20px) !important',
+        'border:1px solid rgba(255,255,255,0.1) !important',
+        'border-left:none !important',
+        'border-radius:0 20px 20px 0 !important',
+        'box-shadow:8px 0 40px rgba(0,0,0,0.6) !important',
+        'z-index:2147483646 !important',
+        'overflow-y:auto !important',
+        'overflow-x:hidden !important',
+        'transition:transform 0.3s cubic-bezier(0.4,0,0.2,1) !important',
+        'font-family:sans-serif !important',
+        'color:#fff !important',
+        'padding:16px 12px !important',
+        'box-sizing:border-box !important',
+        'pointer-events:auto !important',
+    ].join(';');
+
+    document.body.appendChild(otLayersPanel);
+
+    // Single persistent event delegation — registered ONCE, never re-added on re-renders.
+    otLayersPanel.addEventListener('click', function(e) {
+        const doc = getIframeDoc();
+        if (!doc) return;
+
+        const item = e.target.closest('.ot-lr-item');
+        const lid = e.target.dataset.lid || (item && item.dataset.lid);
+        if (!lid) return;
+
+        if (e.target.classList.contains('ot-lr-del')) {
+            e.stopPropagation();
+            const target = doc.getElementById(lid);
+            if (target && confirm('Bu elementi silmek istiyor musun?')) { target.remove(); renderLayersPanel(); }
+            return;
+        }
+        if (e.target.classList.contains('ot-lr-up')) {
+            e.stopPropagation();
+            const target = doc.getElementById(lid);
+            const prev = target && target.previousElementSibling;
+            if (target && prev) target.parentNode.insertBefore(target, prev);
+            renderLayersPanel(); return;
+        }
+        if (e.target.classList.contains('ot-lr-dn')) {
+            e.stopPropagation();
+            const target = doc.getElementById(lid);
+            const next = target && target.nextElementSibling;
+            if (target && next) target.parentNode.insertBefore(next, target);
+            renderLayersPanel(); return;
+        }
+        // Button toggle: only expand/collapse, do NOT select (works for both root and regular items)
+        if (e.target.classList.contains('ot-lr-toggle')) {
+            e.stopPropagation();
+            const toggleLid = e.target.dataset.lid || (item && item.dataset.lid);
+            const childBlock = otLayersPanel.querySelector(`.ot-lr-children[data-parent="${toggleLid}"]`);
+            if (childBlock) {
+                const isOpen = childBlock.style.display !== 'none';
+                childBlock.style.display = isOpen ? 'none' : 'block';
+                const count = e.target.textContent.replace(/^[▸▾]\s*/, '');
+                e.target.textContent = (isOpen ? '▸ ' : '▾ ') + count;
+            }
+            return;
+        }
+
+        if (!item) return;
+
+        // Row click: always select the element; auto-expand if it has children
+        const target = doc.getElementById(item.dataset.lid);
+        if (target) {
+            const childBlock = otLayersPanel.querySelector(`.ot-lr-children[data-parent="${item.dataset.lid}"]`);
+            if (childBlock && childBlock.style.display === 'none') {
+                childBlock.style.display = 'block';
+                const btn = item.querySelector('.ot-lr-toggle');
+                if (btn) { const c = btn.textContent.replace(/^[▸▾]\s*/, ''); btn.textContent = '▾ ' + c; }
+            }
+            otLayersPanel.querySelectorAll('.ot-lr-active').forEach(el => el.classList.remove('ot-lr-active'));
+            item.classList.add('ot-lr-active');
+            selectedElement = target;
+            showInspector(target, false);
+            loadTab('edit');
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+
+    let isLayersPanelOpen = false;
+
+    const LAYER_SYSTEM_IDS = new Set(['inline-editor-toolbar','inline-editor-sidebar',
+        'inline-selection-box','inline-element-inspector','inline-drag-global-overlay',
+        'ot-status-toast','ot-premium-ui-styles','opentemp-shared-styles',
+        'ot-code-panel','resizer-selection-tag','ot-layers-panel']);
+
+    const LAYER_ICONS = { h1:'H1',h2:'H2',h3:'H3',h4:'H4',h5:'H5',h6:'H6',
+        p:'¶',img:'🖼',button:'⬟',section:'§',nav:'≡',a:'🔗',
+        ul:'≡',ol:'#',li:'·',video:'▶',iframe:'▶',form:'⊡',div:'▪' };
+
+    const layerGetIcon = el => LAYER_ICONS[el.tagName.toLowerCase()] || el.tagName.substring(0,2).toUpperCase();
+    const layerGetLabel = el => {
+        const tag = el.tagName.toLowerCase();
+        const id  = el.id && !el.id.startsWith('ot-gen-') ? `#${el.id}` : '';
+        const aria = el.getAttribute('aria-label') || el.getAttribute('title')
+                  || (tag === 'img' ? el.getAttribute('alt') : '')
+                  || el.getAttribute('data-label') || '';
+        const cls = el.classList.length
+            ? `.${[...el.classList].filter(c => !c.startsWith('ot-') && c !== 'ot-editable-candidate')[0] || ''}` : '';
+        const text = (el.textContent||'').trim().replace(/\s+/g,' ').slice(0,24);
+        const lbl = id || aria || cls || (text ? `"${text}"` : '');
+        return `&lt;${tag}&gt;${lbl ? ' <span style="opacity:0.45;font-size:0.7em">'+lbl+'</span>' : ''}`;
+    };
+    const layerEnsureId = el => { if (!el.id) el.id = 'ot-gen-' + Math.random().toString(36).substr(2,9); return el.id; };
+
+    function renderLayersPanel() {
+        const doc = getIframeDoc();
+        if (!doc) { otLayersPanel.innerHTML = '<p style="opacity:0.4;font-size:0.8rem;padding:8px;">Doküman yüklenemedi.</p>'; return; }
+
+        const inserted = Array.from(doc.querySelectorAll('.ot-inserted-block'));
+        const structure = Array.from(doc.body.children).filter(el =>
+            !LAYER_SYSTEM_IDS.has(el.id) &&
+            !el.classList.contains('ot-inserted-block') &&
+            !['script','style','noscript'].includes(el.tagName.toLowerCase())
+        );
+
+        const insertedRow = (el, idx, total) => {
+            const eid = layerEnsureId(el);
+            return `<div class="ot-lr-item" data-lid="${eid}" style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:9px;cursor:pointer;transition:background 0.12s;border:1px solid transparent;margin-bottom:2px;">
+                <span style="font-size:0.6rem;background:rgba(255,69,0,0.18);color:#FF4500;padding:2px 6px;border-radius:5px;font-weight:800;flex-shrink:0;">${layerGetIcon(el)}</span>
+                <span style="flex:1;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${layerGetLabel(el)}</span>
+                <span class="ot-lr-up" data-lid="${eid}" title="Yukarı" style="font-size:0.65rem;opacity:${idx===0?'0.1':'0.45'};cursor:pointer;padding:2px 4px;border-radius:4px;pointer-events:${idx===0?'none':'auto'};">↑</span>
+                <span class="ot-lr-dn" data-lid="${eid}" title="Aşağı" style="font-size:0.65rem;opacity:${idx===total-1?'0.1':'0.45'};cursor:pointer;padding:2px 4px;border-radius:4px;pointer-events:${idx===total-1?'none':'auto'};">↓</span>
+                <span class="ot-lr-del" data-lid="${eid}" title="Sil" style="font-size:0.65rem;color:#ff5555;opacity:0.4;cursor:pointer;padding:2px 5px;border-radius:4px;">✕</span>
+            </div>`;
+        };
+
+        const buildStructItem = (el, depth) => {
+            const eid = layerEnsureId(el);
+            const kids = Array.from(el.children).filter(c =>
+                !LAYER_SYSTEM_IDS.has(c.id) && !['script','style'].includes(c.tagName.toLowerCase())
+            );
+            const hasKids = kids.length > 0;
+            const pl = 8 + depth * 12;
+            const isRoot = depth === 0;
+
+            // Root-level elements (depth 0) are structural containers — not selectable,
+            // only expandable. They get a distinct locked appearance.
+            if (isRoot) {
+                let html = `<div class="ot-lr-root" data-lid="${eid}" style="display:flex;align-items:center;gap:6px;padding:6px 8px 6px ${pl}px;border-radius:8px;margin-bottom:2px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+                    <span style="font-size:0.55rem;opacity:0.3;flex-shrink:0;">⊘</span>
+                    <span style="font-size:0.6rem;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;flex-shrink:0;opacity:0.6;">${layerGetIcon(el)}</span>
+                    <span style="flex:1;font-size:0.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:0.45;">${layerGetLabel(el)}</span>
+                    ${hasKids
+                        ? `<button class="ot-lr-toggle" data-lid="${eid}" title="İçeriği aç/kapat" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.45);cursor:pointer;font-size:0.6rem;padding:3px 8px;border-radius:6px;flex-shrink:0;font-weight:700;line-height:1;white-space:nowrap;">▸ ${kids.length}</button>`
+                        : ''}
+                </div>`;
+                if (hasKids) {
+                    html += `<div class="ot-lr-children" data-parent="${eid}" style="display:none;">`
+                        + kids.slice(0,15).map(c => buildStructItem(c, depth+1)).join('')
+                    + `</div>`;
+                }
+                return html;
+            }
+
+            let html = `<div class="ot-lr-item" data-lid="${eid}" style="display:flex;align-items:center;gap:6px;padding:5px 8px 5px ${pl}px;border-radius:7px;cursor:pointer;transition:background 0.12s;margin-bottom:1px;">
+                <span style="font-size:0.6rem;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;flex-shrink:0;">${layerGetIcon(el)}</span>
+                <span style="flex:1;font-size:0.73rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${layerGetLabel(el)}</span>
+                ${hasKids
+                    ? `<button class="ot-lr-toggle" data-lid="${eid}" title="Alt elemanları aç/kapat" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.55);cursor:pointer;font-size:0.6rem;padding:3px 7px;border-radius:6px;flex-shrink:0;font-weight:700;line-height:1;white-space:nowrap;">▸ ${kids.length}</button>`
+                    : `<span style="min-width:6px;flex-shrink:0;"></span>`}
+            </div>`;
+            if (hasKids) {
+                html += `<div class="ot-lr-children" data-parent="${eid}" style="display:none;">`
+                    + kids.slice(0,15).map(c => buildStructItem(c, depth+1)).join('')
+                + `</div>`;
+            }
+            return html;
+        };
+
+        // Ensure selected element has an id BEFORE building the panel so activeId is never ''.
+        const activeId = selectedElement ? layerEnsureId(selectedElement) : '';
+
+        otLayersPanel.innerHTML = `
+            <style>
+                #ot-layers-panel .ot-lr-item:hover { background:rgba(255,255,255,0.07) !important; }
+                #ot-layers-panel .ot-lr-toggle:hover { background:rgba(255,255,255,0.15) !important; border-color:rgba(255,255,255,0.25) !important; color:#fff !important; }
+                #ot-layers-panel .ot-lr-item.ot-lr-active { background:rgba(255,69,0,0.28) !important; border-color:rgba(255,69,0,0.7) !important; box-shadow:inset 0 0 0 1px rgba(255,69,0,0.4) !important; }
+                #ot-layers-panel .ot-lr-up:hover, #ot-layers-panel .ot-lr-dn:hover { background:rgba(255,255,255,0.12); opacity:1 !important; }
+                #ot-layers-panel .ot-lr-del:hover { background:rgba(255,85,85,0.18); opacity:1 !important; }
+                #ot-layers-panel::-webkit-scrollbar { width:4px; }
+                #ot-layers-panel::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+            </style>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                <span style="font-size:0.7rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#FF4500;">⊞ Katmanlar</span>
+                <button onclick="window.toggleLayersPanel()" style="background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:1rem;line-height:1;padding:2px 6px;">✕</button>
+            </div>
+
+            ${inserted.length > 0 ? `
+            <div style="margin-bottom:16px;">
+                <div style="font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#FF4500;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid rgba(255,69,0,0.15);">Eklenen (${inserted.length})</div>
+                ${inserted.map((el,i) => insertedRow(el,i,inserted.length)).join('')}
+            </div>` : `<div style="font-size:0.72rem;opacity:0.25;padding:4px 2px;margin-bottom:14px;">Henüz element eklenmedi.</div>`}
+
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,0.4);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                    <span>Sayfa Yapısı (${structure.length})</span>
+                    <button onclick="renderLayersPanel()" style="background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:0.75rem;padding:0 2px;" title="Yenile">↺</button>
+                </div>
+                ${structure.map(el => buildStructItem(el,0)).join('')}
+            </div>
+        `;
+
+        // Mark active element — auto-expand parents and scroll into view
+        if (activeId) {
+            const activeItem = otLayersPanel.querySelector(`.ot-lr-item[data-lid="${activeId}"]`);
+            if (activeItem) {
+                activeItem.classList.add('ot-lr-active');
+                // Walk up and open every ot-lr-children ancestor so the item is visible
+                let node = activeItem.parentElement;
+                while (node && node !== otLayersPanel) {
+                    if (node.classList && node.classList.contains('ot-lr-children')) {
+                        node.style.display = 'block';
+                        const parentId = node.dataset.parent;
+                        if (parentId) {
+                            const parentItem = otLayersPanel.querySelector(`.ot-lr-item[data-lid="${parentId}"]`);
+                            if (parentItem) {
+                                const btn = parentItem.querySelector('.ot-lr-toggle');
+                                if (btn) { const c = btn.textContent.replace(/^[▸▾]\s*/, ''); btn.textContent = '▾ ' + c; }
+                            }
+                        }
+                    }
+                    node = node.parentElement;
+                }
+                activeItem.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+    }
+
+    window.renderLayersPanel = renderLayersPanel;
+
+    window.toggleLayersPanel = function() {
+        isLayersPanelOpen = !isLayersPanelOpen;
+        otLayersPanel.style.transform = isLayersPanelOpen
+            ? 'translateY(-50%) translateX(0)'
+            : 'translateY(-50%) translateX(-100%)';
+        const btn = otToolbar.querySelector('#btn-layers-toggle');
+        if (btn) {
+            btn.style.background = isLayersPanelOpen ? 'rgba(255,69,0,0.2)' : 'rgba(255,255,255,0.06)';
+            btn.style.color = isLayersPanelOpen ? '#FF4500' : 'rgba(255,255,255,0.7)';
+            btn.style.borderColor = isLayersPanelOpen ? 'rgba(255,69,0,0.4)' : 'rgba(255,255,255,0.1)';
+        }
+        if (isLayersPanelOpen) renderLayersPanel();
+    };
+
+    otToolbar.querySelector('#btn-layers-toggle').addEventListener('click', window.toggleLayersPanel);
 
     window.setEditMode = function(state) {
         window.isEditing = state;
@@ -1772,7 +2327,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let el = doc.createElement('div');
         el.className = 'ot-inserted-block';
-        el.style.cssText = 'position:relative; margin:20px auto; border-radius:32px; overflow:hidden; display:block !important; width:100% !important; max-width:1100px !important; box-sizing:border-box !important;';
+        el.style.cssText = 'position:relative; margin:20px auto; border-radius:32px; overflow:visible; display:block !important; width:100% !important; max-width:1100px !important; box-sizing:border-box !important;';
 
         // --- 🏆 CLASSIC RESTORATION: Force Vertical Body ---
         doc.body.style.display = 'flex';
@@ -1782,10 +2337,12 @@ document.addEventListener('DOMContentLoaded', () => {
         doc.body.style.paddingBottom = '250px'; // 🏆 LARGE SPACER FOR UI OVERLAP
 
         const presets = {
-            'title': `<h1 style="font-size:3rem; font-weight:900; letter-spacing:-1px; margin-bottom:20px; padding:0 20px;">Main Heading Title</h1>`,
-            'text': `<p style="font-size:1.1rem; opacity:0.7; line-height:1.7; padding:0 20px;">This is a premium typography block. Use it to describe your incredible features or tell your story with professional clarity.</p>`,
-            'image': `<div style="padding:0 20px;"><img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200" style="width:100%; border-radius:32px; display:block;"></div>`,
-            'button': `<div style="padding:20px;"><button style="background:#FF4500; color:#fff; border:none; padding:18px 42px; border-radius:18px; font-weight:800; font-size:1rem; cursor:pointer; box-shadow:0 10px 30px rgba(255,69,0,0.3);">Get Started</button></div>`,
+            'title': `<h1 style="font-size:3rem; font-weight:900; letter-spacing:-1px; margin-bottom:20px; padding:20px 28px; color:inherit;">Main Heading Title</h1>`,
+            'text': `<p style="font-size:1.1rem; opacity:0.75; line-height:1.8; padding:20px 28px; color:inherit;">This is a premium typography block. Use it to describe your incredible features or tell your story with professional clarity.</p>`,
+            'image': `<img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200" style="width:100%; border-radius:32px; display:block; box-sizing:border-box;" loading="lazy">`,
+            'button': `<div style="padding:20px 28px;"><button style="background:#FF4500; color:#fff; border:none; padding:18px 42px; border-radius:18px; font-weight:800; font-size:1rem; cursor:pointer; box-shadow:0 10px 30px rgba(255,69,0,0.3); letter-spacing:0.3px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 16px 40px rgba(255,69,0,0.45)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 10px 30px rgba(255,69,0,0.3)'">Get Started →</button></div>`,
+            'divider': `<div style="padding:20px 28px;"><hr style="border:none; border-top:1px solid rgba(255,255,255,0.12); margin:0;"></div>`,
+            'spacer': `<div style="height:80px; width:100%; display:flex; align-items:center; justify-content:center;"><span style="font-size:0.65rem; opacity:0.2; letter-spacing:2px; text-transform:uppercase; pointer-events:none; user-select:none;">SPACER — drag to resize</span></div>`,
             'hero-split': `
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:30px; padding:60px 40px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.1); border-radius:48px; align-items:center; margin:0 20px; box-sizing:border-box;">
                     <div>
@@ -1816,7 +2373,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`,
             'cta-banner': `<div style="background:#FF4500; padding:80px; text-align:center; border-radius:40px;"><h2 style="font-size:3rem; color:#fff; margin-bottom:30px;">Ready to create something bold?</h2><button style="background:#fff; color:#FF4500; border:none; padding:18px 50px; border-radius:18px; font-weight:900; cursor:pointer;">Join the Movement</button></div>`,
             'faq-accord': `<div style="max-width:800px; margin:0 auto;"><details style="background:rgba(255,255,255,0.03); padding:20px; border-radius:15px; margin-bottom:10px;"><summary style="font-weight:bold; cursor:pointer;">How does the Architect Engine work?</summary><p style="margin-top:15px; opacity:0.6;">It uses semantic HTML and advanced CSS Grid for production-grade web builds.</p></details></div>`,
-            'footer-mod': `<div style="display:grid; grid-template-columns:2fr 1fr 1fr; padding:80px 40px; border-top:1px solid rgba(255,255,255,0.1); margin-top:100px;"><div><h3>OpenTemp</h3><p style="opacity:0.4;">The future of one-touch web design.</p></div><div><h4>Explore</h4><p>Templates</p></div><div><h4>Legal</h4><p>Terms</p></div></div>`,
+            'footer-mod': `<div style="display:grid; grid-template-columns:2fr 1fr 1fr; padding:80px 40px; border-top:1px solid rgba(255,255,255,0.1); margin-top:100px; color:inherit;"><div><h3 style="margin-bottom:12px; color:inherit;">OpenTemp</h3><p style="opacity:0.4; color:inherit;">The future of one-touch web design.</p></div><div><h4 style="margin-bottom:12px; color:inherit;">Explore</h4><p style="opacity:0.6; color:inherit;">Templates</p></div><div><h4 style="margin-bottom:12px; color:inherit;">Legal</h4><p style="opacity:0.6; color:inherit;">Terms</p></div></div>`,
+            'testimonial': `
+                <div style="padding:48px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:40px; text-align:center; max-width:700px; margin:0 auto;">
+                    <div style="font-size:3rem; margin-bottom:24px; opacity:0.3;">"</div>
+                    <p style="font-size:1.25rem; line-height:1.7; margin-bottom:32px; color:inherit; opacity:0.85;">This template changed how I present my work. Clean, fast, and incredibly customizable.</p>
+                    <div style="display:flex; align-items:center; justify-content:center; gap:14px;">
+                        <div style="width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg,#FF4500,#ff8c00); flex-shrink:0;"></div>
+                        <div style="text-align:left;">
+                            <div style="font-weight:800; font-size:0.9rem; color:inherit;">Jane Doe</div>
+                            <div style="font-size:0.75rem; opacity:0.45; color:inherit;">Product Designer @ Studio</div>
+                        </div>
+                    </div>
+                </div>`,
+            'stats-row': `
+                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; padding:0 4px;">
+                    ${[['2.4k','Happy Clients'],['98%','Satisfaction'],['12yr','Experience']].map(([num,label]) => `
+                        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:28px; padding:36px 24px; text-align:center;">
+                            <div style="font-size:2.8rem; font-weight:900; letter-spacing:-2px; color:#FF4500; margin-bottom:8px;">${num}</div>
+                            <div style="font-size:0.8rem; opacity:0.5; text-transform:uppercase; letter-spacing:1.5px; color:inherit;">${label}</div>
+                        </div>`).join('')}
+                </div>`,
             'raw-html': `<div style="border:2px dashed #00ffcc; padding:60px; text-align:center; color:#00ffcc; background:rgba(0,255,204,0.05); cursor:pointer;" onclick="loadTab('elements')">[ INITIALIZING SOURCE IDE... ]</div>`
         };
 
@@ -1830,9 +2407,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (el) {
             doc.body.appendChild(el);
+            // Guard: prevent the button's click event from propagating to the mousedown
+            // handler and immediately calling deselectElement() on the new element.
+            window._otJustInserted = true;
+            setTimeout(() => { window._otJustInserted = false; }, 150);
             activateEditMode();
-            selectedElement = el;
-            showInspector(el, true);
+
+            // Smart selection: if the preset's first/only child is a more specific element
+            // (img, a, button, video), auto-select it instead of the outer wrapper div.
+            // This eliminates the "double-click" UX issue where the user has to click
+            // through the wrapper to reach the actual content element.
+            const INNER_PRIORITY_TAGS = ['img', 'a', 'video', 'audio', 'iframe', 'button', 'input'];
+            const firstChild = el.firstElementChild;
+            const selectTarget = (firstChild && INNER_PRIORITY_TAGS.includes(firstChild.tagName.toLowerCase()))
+                ? firstChild 
+                : el;
+
+            selectedElement = selectTarget;
+            showInspector(selectTarget, true);
 
             const newH = getCleanSnapshotHTML();
             window.historyManager.record(new SnapshotCommand(oldH, newH));
@@ -1847,16 +2439,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+    // --- Inspector Sync Loop ---
+    // Runs every animation frame while an element is selected, keeping the
+    // position:fixed overlay box pixel-perfect on the element regardless of
+    // scroll, layout shifts, or CSS transitions.  Only repositions geometry;
+    // does NOT update sidebar / code panel (that's showInspector's job).
+    function _syncInspectorPosition() {
+        if (!selectedElement || !window.isEditing) { _syncRafId = null; return; }
+        if (!isDraggingNode && !isBoxResizing) {
+            const iframe = document.getElementById('template-iframe');
+            const iframeRect = iframe ? iframe.getBoundingClientRect() : { top: 0, left: 0 };
+            const r = selectedElement.getBoundingClientRect();
+            const t = iframeRect.top  + r.top;
+            const l = iframeRect.left + r.left;
+            if (otResizerBox && otResizerBox.style.display !== 'none') {
+                otResizerBox.style.top    = t + 'px';
+                otResizerBox.style.left   = l + 'px';
+                otResizerBox.style.width  = r.width  + 'px';
+                otResizerBox.style.height = r.height + 'px';
+            }
+            if (otInspector && otInspector.style.display !== 'none') {
+                otInspector.style.top  = (t - 60) + 'px';
+                otInspector.style.left = (l + r.width / 2 - 100) + 'px';
+            }
+        }
+        _syncRafId = requestAnimationFrame(_syncInspectorPosition);
+    }
+    function startInspectorSync() {
+        if (_syncRafId) return; // already running
+        _syncRafId = requestAnimationFrame(_syncInspectorPosition);
+    }
+    function stopInspectorSync() {
+        if (_syncRafId) { cancelAnimationFrame(_syncRafId); _syncRafId = null; }
+    }
+
     function showInspector(el, forceSidebarSync = false) {
         if (!window.isEditing) return;
         if (!el) {
             selectedElement = null; // 🚀 Proper null safety
             otInspector.style.display = 'none';
             if (otResizerBox) otResizerBox.style.display = 'none';
+            stopInspectorSync();
             return;
         }
         selectedElement = el;
-        
+
         // 🚀 Selection Persistence: Store unique ID for history recovery
         if (!el.id) el.id = 'ot-gen-' + Math.random().toString(36).substr(2, 9);
         lastSelectedId = el.id;
@@ -1866,20 +2493,89 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = el.getBoundingClientRect();
         const iframe = document.getElementById('template-iframe');
         const iframeRect = iframe ? iframe.getBoundingClientRect() : { top:0, left:0 };
-        const top = window.pageYOffset + iframeRect.top + rect.top;
-        const left = window.pageXOffset + iframeRect.left + rect.left;
+        const top = iframeRect.top + rect.top;
+        const left = iframeRect.left + rect.left;
         otInspector.style.top = `${top - 60}px`;
         otInspector.style.left = `${left + rect.width/2 - 100}px`;
         otResizerBox.style.top = `${top}px`;
         otResizerBox.style.left = `${left}px`;
         otResizerBox.style.width = `${rect.width}px`;
         otResizerBox.style.height = `${rect.height}px`;
+
+        // Start the per-frame sync loop so the box stays pinned during scroll/resize
+        startInspectorSync();
+
         // ISOLATION GUARD: Never switch tabs during an active undo/redo operation.
         // forceSidebarSync=true is only meaningful for deliberate user clicks.
         if (forceSidebarSync && !window.historyManager.isProcessing) loadTab('edit');
 
+        // --- 🏆 INSPECTOR: Contextual buttons based on element type ---
+        const _tag = el.tagName.toLowerCase();
+        const uploadBtn  = otInspector.querySelector('#ins-upload');
+        const uploadSep  = otInspector.querySelector('#ins-upload-sep');
+        const linkWrap   = otInspector.querySelector('#ins-link-wrap');
+        const linkSep    = otInspector.querySelector('#ins-link-sep');
+        const listBtn    = otInspector.querySelector('#ins-list-add');
+        const listSep    = otInspector.querySelector('#ins-list-sep');
+
+        // Reset all contextual buttons
+        if (uploadBtn)  { uploadBtn.style.display  = 'none'; }
+        if (uploadSep)  { uploadSep.style.display   = 'none'; }
+        if (linkWrap)   { linkWrap.style.display    = 'none'; }
+        if (linkSep)    { linkSep.style.display     = 'none'; }
+        if (listBtn)    { listBtn.style.display     = 'none'; }
+        if (listSep)    { listSep.style.display     = 'none'; }
+
+        // img — show upload button
+        if (_tag === 'img') {
+            if (uploadSep)  uploadSep.style.display  = 'flex';
+            if (uploadBtn)  {
+                uploadBtn.style.display = 'flex';
+                // Re-bind to always target the freshly selected element
+                uploadBtn.onclick = () => {
+                    const fi = document.createElement('input');
+                    fi.type = 'file'; fi.accept = 'image/*';
+                    fi.onchange = ev => {
+                        const file = ev.target.files[0]; if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = e2 => {
+                            const oldSrc = el.getAttribute('src') || '';
+                            window.historyManager.execute(new AttrCommand(el, 'src', oldSrc, e2.target.result));
+                        };
+                        reader.readAsDataURL(file);
+                    };
+                    fi.click();
+                };
+            }
+        }
+        // a — show link input
+        if (_tag === 'a') {
+            if (linkSep)  linkSep.style.display  = 'flex';
+            if (linkWrap) {
+                linkWrap.style.display = 'flex';
+                const li = linkWrap.querySelector('#ins-link-url');
+                if (li) li.value = el.getAttribute('href') || '';
+            }
+        }
+        // ul/ol — show add item button
+        if (_tag === 'ul' || _tag === 'ol') {
+            if (listSep) listSep.style.display = 'flex';
+            if (listBtn) {
+                listBtn.style.display = 'flex';
+                listBtn.onclick = () => {
+                    const li = el.ownerDocument.createElement('li');
+                    li.textContent = 'New item';
+                    li.contentEditable = 'true';
+                    li.classList.add('ot-editable-candidate');
+                    el.appendChild(li);
+                };
+            }
+        }
+
         // Auto-refresh Code Panel when a new element is selected
         if (otCodePanel && otCodePanel.dataset.open === '1') renderCodePanel();
+        // Auto-refresh Layers Panel to highlight the newly selected element
+        if (isLayersPanelOpen) renderLayersPanel();
     }
 
     // --- 🏆 FOCUS / DESELECT SYSTEM ---
@@ -1887,6 +2583,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Guards: never fires during drag or resize — interaction flags are checked by callers.
     function deselectElement() {
         if (!selectedElement) return;
+        stopInspectorSync();
         selectedElement = null;
         lastSelectedId = null;
         otInspector.style.display = 'none';
@@ -1927,10 +2624,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             d.addEventListener('mousedown', (e) => {
                 if (window.isInternalUI(e.target)) return;
-                const target = e.target.closest('h1, h2, h3, h4, h5, h6, p, span, div, li, .ot-widget');
+                const target = e.target.closest('h1, h2, h3, h4, h5, h6, p, span, div, li, img, a, video, iframe, input, textarea, button, audio, svg, .ot-widget');
                 if (target) { selectedElement = target; showInspector(target, true); }
                 // Click lands on empty space (not a selectable element) → deselect
-                else if (selectedElement && !isDraggingNode && !isBoxResizing) deselectElement();
+                // Guard: skip if an element was just inserted (prevents button click from propagating)
+                else if (selectedElement && !isDraggingNode && !isBoxResizing && !window._otJustInserted) deselectElement();
             }, { signal: editAbortController.signal });
 
             // --- 🏆 PROXIMITY BOUNDARY: visual deselect-zone indicator ---
@@ -1979,11 +2677,30 @@ document.addEventListener('DOMContentLoaded', () => {
             deselectElement();
         }, { signal: editAbortController.signal });
 
+        // --- 🏆 SCROLL SYNC: reposition selection box when iframe or parent window scrolls ---
+        // Uses requestAnimationFrame so the box repositions in sync with the browser's
+        // render cycle — smooth follow with no visual lag or "floating" artefact.
+        let _scrollRAF = null;
+        const onScroll = () => {
+            if (!selectedElement || isDraggingNode || isBoxResizing) return;
+            if (_scrollRAF) return; // already queued for this frame
+            _scrollRAF = requestAnimationFrame(() => {
+                _scrollRAF = null;
+                if (selectedElement && !isDraggingNode && !isBoxResizing) {
+                    showInspector(selectedElement);
+                }
+            });
+        };
+        iframeDoc.addEventListener('scroll', onScroll, { signal: editAbortController.signal, passive: true });
+        iframeDoc.defaultView && iframeDoc.defaultView.addEventListener('scroll', onScroll, { signal: editAbortController.signal, passive: true });
+        window.addEventListener('scroll', onScroll, { signal: editAbortController.signal, passive: true });
+
         setupGlobalKeyHandlers(iframeDoc);
         startGlobalObserver();
     }
 
     function deactivateEditMode() {
+        stopInspectorSync();
         stopGlobalObserver();
         if (editAbortController) editAbortController.abort();
         
@@ -2003,48 +2720,139 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.isInternalUI = function(node) {
-        return !!node.closest('#inline-editor-toolbar, #inline-editor-sidebar, #inline-selection-box, #inline-element-inspector, #inline-drag-global-overlay, #ot-code-panel');
+        return !!node.closest('#inline-editor-toolbar, #inline-editor-sidebar, #inline-selection-box, #inline-element-inspector, #inline-drag-global-overlay, #ot-code-panel, #ot-layers-panel');
     };
 
     // Global interaction handlers for drag/move
     let dragStartTransform = '';
     let initialX = 0, initialY = 0;
+    let dragMouseY = 0;       // tracked for auto-scroll
+    let autoScrollRAF = null; // requestAnimationFrame handle
+    let dragStartRect = null; // element bounds at drag start — used for horizontal clamping
+    let axisLock = null;      // 'x' | 'y' | null — set when Shift held during drag
 
     function getTransformXY(el) {
         const style = window.getComputedStyle(el);
-        // Fallback or identity matrix if transform is none
         if (!style.transform || style.transform === 'none') return { x: 0, y: 0 };
         const matrix = new DOMMatrixReadOnly(style.transform);
         return { x: matrix.m41, y: matrix.m42 };
     }
 
+    // Auto-scroll: runs every animation frame while dragging.
+    // When the mouse is within EDGE px of the viewport top/bottom, scrolls the iframe
+    // and adjusts startY so the element continues to follow the cursor seamlessly.
+    function autoScrollLoop() {
+        if (!isDraggingNode) return;
+        const EDGE = 80;
+        const MAX_SPEED = 14;
+        let speed = 0;
+        if (dragMouseY < EDGE) {
+            speed = -Math.ceil((EDGE - dragMouseY) / EDGE * MAX_SPEED);
+        } else if (dragMouseY > window.innerHeight - EDGE) {
+            speed = Math.ceil((dragMouseY - (window.innerHeight - EDGE)) / EDGE * MAX_SPEED);
+        }
+        if (speed !== 0 && selectedElement) {
+            const iframeEl = document.getElementById('template-iframe');
+            const scrollWin = (iframeEl && iframeEl.contentWindow) ? iframeEl.contentWindow : window;
+            const before = scrollWin.scrollY;
+            scrollWin.scrollBy(0, speed);
+            const actual = scrollWin.scrollY - before;
+            if (actual !== 0) {
+                // Compensate: keep the element pinned under the cursor despite the scroll
+                startY -= actual;
+                const dx = clampDragDx((typeof dragMouseX !== 'undefined' ? dragMouseX : startX) - startX);
+                const dy = dragMouseY - startY;
+                selectedElement.style.transform = `translate(${initialX + dx}px, ${initialY + dy}px)`;
+                showInspector(selectedElement);
+            }
+        }
+        autoScrollRAF = requestAnimationFrame(autoScrollLoop);
+    }
+
+    let dragMouseX = 0;
+
     otDragBar.addEventListener('mousedown', (e) => {
         if (!selectedElement) return;
-        e.preventDefault(); // 🚀 FIX: Prevent native text selection highlighter during dragging
-        
+        e.preventDefault();
+
         dragStartTransform = selectedElement.style.transform || 'translate(0px, 0px)';
         const currentPos = getTransformXY(selectedElement);
         initialX = currentPos.x;
         initialY = currentPos.y;
 
-        isDraggingNode = true;
-        startX = e.clientX; 
+        isDraggingNode = false; // activated only after threshold
+        dragStartRect = null;
+        axisLock = null;
+        startX = e.clientX;
         startY = e.clientY;
-        
+        dragMouseX = e.clientX;
+        dragMouseY = e.clientY;
+
         document.addEventListener('mousemove', handleDrag);
         document.addEventListener('mouseup', handleDragEnd);
     });
 
+    const DRAG_THRESHOLD = 5; // px — prevents accidental drag on scroll/click
+
+    // Clamp horizontal delta so the element cannot be dragged outside the page width.
+    function clampDragDx(dx) {
+        if (!dragStartRect) return dx;
+        const pageW = document.documentElement.scrollWidth || document.body.scrollWidth;
+        const minDx = -dragStartRect.left;                          // can't go left of page
+        const maxDx = pageW - dragStartRect.left - dragStartRect.width; // can't go right of page
+        return Math.max(minDx, Math.min(maxDx, dx));
+    }
+
     function handleDrag(e) {
-        if (!isDraggingNode || !selectedElement) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        
+        if (!selectedElement) return;
+        dragMouseX = e.clientX;
+        dragMouseY = e.clientY;
+
+        if (!isDraggingNode) {
+            const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+            if (dist < DRAG_THRESHOLD) return;
+            // Threshold crossed — activate drag; capture rect for bounds clamping
+            isDraggingNode = true;
+            dragStartRect = selectedElement.getBoundingClientRect();
+            autoScrollRAF = requestAnimationFrame(autoScrollLoop);
+        }
+
+        let dx = e.clientX - startX;
+        let dy = e.clientY - startY;
+
+        // --- D: Axis lock (Shift key) ---
+        if (e.shiftKey) {
+            if (!axisLock) {
+                // Determine dominant axis on first Shift frame
+                axisLock = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+            }
+            if (axisLock === 'x') dy = 0; // horizontal only
+            else                  dx = 0; // vertical only
+            // Visual feedback: tint drag bar to signal active axis lock
+            const lbl = document.getElementById('ot-drag-label');
+            if (lbl) lbl.textContent = axisLock === 'x' ? '↔ YATAY KİLİT' : '↕ DİKEY KİLİT';
+            otDragBar.style.background = '#0099ff';
+        } else {
+            axisLock = null; // Shift released — free movement again
+            const lbl = document.getElementById('ot-drag-label');
+            if (lbl) lbl.textContent = 'MOVE ELEMENT';
+            otDragBar.style.background = '#FF4500';
+        }
+
+        // --- B: Horizontal page bounds ---
+        dx = clampDragDx(dx);
+
         selectedElement.style.transform = `translate(${initialX + dx}px, ${initialY + dy}px)`;
         showInspector(selectedElement);
     }
 
     function handleDragEnd() {
+        if (autoScrollRAF) { cancelAnimationFrame(autoScrollRAF); autoScrollRAF = null; }
+        // Remove listeners FIRST — before any early return — prevents orphaned handlers
+        // that would cause drag to trigger unexpectedly on future mouse movements.
+        document.removeEventListener('mousemove', handleDrag);
+        document.removeEventListener('mouseup', handleDragEnd);
+
         if (!isDraggingNode || !selectedElement) {
             resetGlobalInteractionState();
             return;
@@ -2052,15 +2860,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const currentPos = getTransformXY(selectedElement);
         const dragEndTransform = `translate(${currentPos.x}px, ${currentPos.y}px)`;
-        
-        document.removeEventListener('mousemove', handleDrag);
-        document.removeEventListener('mouseup', handleDragEnd);
-        
+
         if (dragStartTransform !== dragEndTransform) {
             const moveCmd = new MoveCommand(selectedElement, dragStartTransform, dragEndTransform);
             window.historyManager.record(moveCmd);
         }
-        
+
         resetGlobalInteractionState();
     }
 
